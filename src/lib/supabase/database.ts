@@ -1,8 +1,12 @@
 import { createClient } from './server';
 import type {
+  DbUser,
+  DbSession,
   DbPlaylist,
   DbTrack,
   DbPlaylistWithTracks,
+  InsertUser,
+  InsertSession,
   InsertPlaylist,
   InsertTrack,
   UpdatePlaylist,
@@ -10,18 +14,242 @@ import type {
 } from './types';
 
 // ============================================
+// USER OPERATIONS
+// ============================================
+
+/**
+ * Get a user by their hashed IP
+ */
+export async function getUserByIpHash(ipHash: string): Promise<DbUser | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('ip_hash', ipHash)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // Not found
+    }
+    console.error('Error fetching user by IP hash:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Get a user by ID
+ */
+export async function getUserById(id: string): Promise<DbUser | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // Not found
+    }
+    console.error('Error fetching user:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Create a new user
+ */
+export async function createUser(user: InsertUser): Promise<DbUser> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('users')
+    .insert(user)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating user:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Update user's last_seen_at timestamp
+ */
+export async function touchUser(id: string): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('users')
+    .update({ last_seen_at: new Date().toISOString() })
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error updating user last_seen_at:', error);
+    // Don't throw - this is a non-critical operation
+  }
+}
+
+/**
+ * Get or create a user by IP hash
+ */
+export async function getOrCreateUserByIpHash(ipHash: string): Promise<DbUser> {
+  // Try to find existing user
+  let user = await getUserByIpHash(ipHash);
+  
+  if (user) {
+    // Update last_seen_at
+    await touchUser(user.id);
+    return user;
+  }
+  
+  // Create new user
+  return createUser({ ip_hash: ipHash });
+}
+
+// ============================================
+// SESSION OPERATIONS
+// ============================================
+
+/**
+ * Get a session by token
+ */
+export async function getSessionByToken(token: string): Promise<DbSession | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('session_token', token)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // Not found
+    }
+    console.error('Error fetching session:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Get a session with its associated user
+ */
+export async function getSessionWithUser(token: string): Promise<{ session: DbSession; user: DbUser } | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('sessions')
+    .select(`
+      *,
+      user:users (*)
+    `)
+    .eq('session_token', token)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // Not found
+    }
+    console.error('Error fetching session with user:', error);
+    throw error;
+  }
+
+  if (!data || !data.user) {
+    return null;
+  }
+
+  return {
+    session: {
+      id: data.id,
+      user_id: data.user_id,
+      session_token: data.session_token,
+      user_agent: data.user_agent,
+      created_at: data.created_at,
+      last_seen_at: data.last_seen_at,
+    },
+    user: data.user as DbUser,
+  };
+}
+
+/**
+ * Create a new session
+ */
+export async function createSession(session: InsertSession): Promise<DbSession> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('sessions')
+    .insert(session)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating session:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Update session's last_seen_at timestamp
+ */
+export async function touchSession(token: string): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('sessions')
+    .update({ last_seen_at: new Date().toISOString() })
+    .eq('session_token', token);
+
+  if (error) {
+    console.error('Error updating session last_seen_at:', error);
+    // Don't throw - this is a non-critical operation
+  }
+}
+
+/**
+ * Delete a session
+ */
+export async function deleteSession(token: string): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('sessions')
+    .delete()
+    .eq('session_token', token);
+
+  if (error) {
+    console.error('Error deleting session:', error);
+    throw error;
+  }
+}
+
+// ============================================
 // PLAYLIST OPERATIONS
 // ============================================
 
 /**
  * Get all playlists (ordered by creation date, newest first)
+ * Optionally filter by user_id
  */
-export async function getPlaylists(): Promise<DbPlaylist[]> {
+export async function getPlaylists(userId?: string): Promise<DbPlaylist[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from('playlists')
     .select('*')
     .order('created_at', { ascending: false });
+
+  // Filter by user_id if provided
+  if (userId) {
+    query = query.eq('user_id', userId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching playlists:', error);

@@ -121,7 +121,7 @@ export function PlaylistPlayer({ playlist, onClose }: PlaylistPlayerProps) {
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-[var(--base-surface-2)] border-t border-[var(--base-border)] p-4 z-50">
+    <div className="fixed bottom-0 left-0 right-0 bg-[var(--base-surface-2)] border-t border-[var(--base-border)] p-3 sm:p-4 z-50">
       <audio
         ref={audioRef}
         onTimeUpdate={handleTimeUpdate}
@@ -132,17 +132,85 @@ export function PlaylistPlayer({ playlist, onClose }: PlaylistPlayerProps) {
       />
 
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-center gap-6">
-          {/* Track Info */}
-          <div className="flex items-center gap-4 flex-1 min-w-0">
-            <div className="w-14 h-14 rounded-lg bg-[var(--accent-blue)]/20 flex items-center justify-center flex-shrink-0">
-              <MusicNoteIcon className="w-6 h-6 text-[var(--accent-blue)]" />
+        {/* Mobile Layout */}
+        <div className="flex flex-col gap-3 sm:hidden">
+          {/* Top row: Track info + controls */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-[var(--accent-blue)]/20 flex items-center justify-center flex-shrink-0">
+              <MusicNoteIcon className="w-5 h-5 text-[var(--accent-blue)]" />
             </div>
-            <div className="min-w-0">
-              <h4 className="font-medium text-white truncate">
+            <div className="min-w-0 flex-1">
+              <h4 className="font-medium text-white text-sm truncate">
                 {currentTrack?.title || 'No track'}
               </h4>
-              <p className="text-sm text-[var(--text-dark-secondary)] truncate">
+              <p className="text-xs text-[var(--text-dark-secondary)] truncate">
+                {playlist.name}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handlePrevious}
+                disabled={currentTrackIndex === 0}
+                className="p-1.5 text-[var(--text-dark-secondary)] hover:text-white disabled:opacity-30 transition-colors"
+              >
+                <SkipBackIcon className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handlePlayPause}
+                className="w-9 h-9 rounded-full bg-white flex items-center justify-center hover:scale-105 transition-transform"
+              >
+                {isPlaying ? (
+                  <PauseIcon className="w-4 h-4 text-black" />
+                ) : (
+                  <PlayIcon className="w-4 h-4 text-black ml-0.5" />
+                )}
+              </button>
+              <button
+                onClick={handleNext}
+                disabled={currentTrackIndex === readyTracks.length - 1}
+                className="p-1.5 text-[var(--text-dark-secondary)] hover:text-white disabled:opacity-30 transition-colors"
+              >
+                <SkipForwardIcon className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          
+          {/* Progress Bar (mobile) */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-[var(--text-dark-secondary)] w-8 text-right">
+              {formatTime(progress)}
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={duration || 100}
+              value={progress}
+              onChange={handleSeek}
+              className="flex-1 h-1 bg-[var(--base-border)] rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+              style={{
+                background: `linear-gradient(to right, var(--accent-blue) 0%, var(--accent-blue) ${
+                  (progress / (duration || 100)) * 100
+                }%, var(--base-border) ${(progress / (duration || 100)) * 100}%, var(--base-border) 100%)`,
+              }}
+            />
+            <span className="text-[10px] text-[var(--text-dark-secondary)] w-8">
+              {formatTime(duration)}
+            </span>
+          </div>
+        </div>
+
+        {/* Desktop Layout */}
+        <div className="hidden sm:flex items-center gap-4 md:gap-6">
+          {/* Track Info */}
+          <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
+            <div className="w-12 h-12 md:w-14 md:h-14 rounded-lg bg-[var(--accent-blue)]/20 flex items-center justify-center flex-shrink-0">
+              <MusicNoteIcon className="w-5 h-5 md:w-6 md:h-6 text-[var(--accent-blue)]" />
+            </div>
+            <div className="min-w-0">
+              <h4 className="font-medium text-white text-sm md:text-base truncate">
+                {currentTrack?.title || 'No track'}
+              </h4>
+              <p className="text-xs md:text-sm text-[var(--text-dark-secondary)] truncate">
                 {playlist.name}
               </p>
             </div>
@@ -150,38 +218,38 @@ export function PlaylistPlayer({ playlist, onClose }: PlaylistPlayerProps) {
 
           {/* Controls */}
           <div className="flex flex-col items-center gap-2 flex-1">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 md:gap-4">
               <button
                 onClick={handlePrevious}
                 disabled={currentTrackIndex === 0}
-                className="p-2 text-[var(--text-dark-secondary)] hover:text-white disabled:opacity-30 transition-colors"
+                className="p-1.5 md:p-2 text-[var(--text-dark-secondary)] hover:text-white disabled:opacity-30 transition-colors"
               >
-                <SkipBackIcon className="w-5 h-5" />
+                <SkipBackIcon className="w-4 h-4 md:w-5 md:h-5" />
               </button>
 
               <button
                 onClick={handlePlayPause}
-                className="w-10 h-10 rounded-full bg-white flex items-center justify-center hover:scale-105 transition-transform"
+                className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white flex items-center justify-center hover:scale-105 transition-transform"
               >
                 {isPlaying ? (
-                  <PauseIcon className="w-5 h-5 text-black" />
+                  <PauseIcon className="w-4 h-4 md:w-5 md:h-5 text-black" />
                 ) : (
-                  <PlayIcon className="w-5 h-5 text-black ml-0.5" />
+                  <PlayIcon className="w-4 h-4 md:w-5 md:h-5 text-black ml-0.5" />
                 )}
               </button>
 
               <button
                 onClick={handleNext}
                 disabled={currentTrackIndex === readyTracks.length - 1}
-                className="p-2 text-[var(--text-dark-secondary)] hover:text-white disabled:opacity-30 transition-colors"
+                className="p-1.5 md:p-2 text-[var(--text-dark-secondary)] hover:text-white disabled:opacity-30 transition-colors"
               >
-                <SkipForwardIcon className="w-5 h-5" />
+                <SkipForwardIcon className="w-4 h-4 md:w-5 md:h-5" />
               </button>
             </div>
 
             {/* Progress Bar */}
             <div className="flex items-center gap-2 w-full max-w-md">
-              <span className="text-xs text-[var(--text-dark-secondary)] w-10 text-right">
+              <span className="text-[10px] md:text-xs text-[var(--text-dark-secondary)] w-8 md:w-10 text-right">
                 {formatTime(progress)}
               </span>
               <input
@@ -197,15 +265,15 @@ export function PlaylistPlayer({ playlist, onClose }: PlaylistPlayerProps) {
                   }%, var(--base-border) ${(progress / (duration || 100)) * 100}%, var(--base-border) 100%)`,
                 }}
               />
-              <span className="text-xs text-[var(--text-dark-secondary)] w-10">
+              <span className="text-[10px] md:text-xs text-[var(--text-dark-secondary)] w-8 md:w-10">
                 {formatTime(duration)}
               </span>
             </div>
           </div>
 
           {/* Volume & Actions */}
-          <div className="flex items-center gap-4 flex-1 justify-end">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 md:gap-4 flex-1 justify-end">
+            <div className="hidden md:flex items-center gap-2">
               <VolumeIcon className="w-5 h-5 text-[var(--text-dark-secondary)]" />
               <input
                 type="range"
@@ -221,10 +289,10 @@ export function PlaylistPlayer({ playlist, onClose }: PlaylistPlayerProps) {
             {currentTrack && (
               <button
                 onClick={() => handleDownload(currentTrack)}
-                className="p-2 text-[var(--text-dark-secondary)] hover:text-white transition-colors"
+                className="p-1.5 md:p-2 text-[var(--text-dark-secondary)] hover:text-white transition-colors"
                 title="Download track"
               >
-                <DownloadIcon className="w-5 h-5" />
+                <DownloadIcon className="w-4 h-4 md:w-5 md:h-5" />
               </button>
             )}
           </div>
@@ -232,13 +300,13 @@ export function PlaylistPlayer({ playlist, onClose }: PlaylistPlayerProps) {
 
         {/* Track List */}
         {readyTracks.length > 1 && (
-          <div className="mt-4 pt-4 border-t border-[var(--base-border)]">
-            <div className="flex gap-2 overflow-x-auto pb-2">
+          <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-[var(--base-border)]">
+            <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-2">
               {readyTracks.map((track, index) => (
                 <button
                   key={track.id}
                   onClick={() => setCurrentTrackIndex(index)}
-                  className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm transition-all ${
+                  className={`flex-shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm transition-all ${
                     index === currentTrackIndex
                       ? 'bg-[var(--accent-blue)]/20 text-[var(--accent-blue)]'
                       : 'bg-[var(--base-fill-1)] text-[var(--text-dark-secondary)] hover:text-white'

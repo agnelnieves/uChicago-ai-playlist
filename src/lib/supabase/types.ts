@@ -3,8 +3,58 @@
 export type PlaylistStatus = 'pending' | 'generating' | 'ready' | 'partial' | 'error';
 export type TrackStatus = 'pending' | 'generating' | 'ready' | 'error';
 
+// ============================================
+// USER TYPES
+// ============================================
+export interface DbUser {
+  id: string;
+  ip_hash: string;
+  created_at: string;
+  last_seen_at: string;
+}
+
+export interface InsertUser {
+  ip_hash: string;
+}
+
+export interface UpdateUser {
+  ip_hash?: string;
+  last_seen_at?: string;
+}
+
+// ============================================
+// SESSION TYPES
+// ============================================
+export interface DbSession {
+  id: string;
+  user_id: string;
+  session_token: string;
+  user_agent: string | null;
+  created_at: string;
+  last_seen_at: string;
+}
+
+export interface DbSessionWithUser extends DbSession {
+  user: DbUser;
+}
+
+export interface InsertSession {
+  user_id: string;
+  session_token: string;
+  user_agent?: string | null;
+}
+
+export interface UpdateSession {
+  user_agent?: string | null;
+  last_seen_at?: string;
+}
+
+// ============================================
+// PLAYLIST TYPES
+// ============================================
 export interface DbPlaylist {
   id: string;
+  user_id: string | null;
   name: string;
   description: string | null;
   prompt: string;
@@ -36,6 +86,7 @@ export interface DbPlaylistWithTracks extends DbPlaylist {
 
 // Insert types (without auto-generated fields)
 export interface InsertPlaylist {
+  user_id?: string | null;
   name: string;
   description?: string | null;
   prompt: string;
@@ -59,6 +110,7 @@ export interface InsertTrack {
 
 // Update types (all fields optional)
 export interface UpdatePlaylist {
+  user_id?: string | null;
   name?: string;
   description?: string | null;
   prompt?: string;

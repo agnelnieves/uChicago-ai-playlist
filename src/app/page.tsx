@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Logo } from '@/components/Logo';
 import { PlaylistForm } from '@/components/PlaylistForm';
 import { PlaylistPlayer } from '@/components/PlaylistPlayer';
 import { GeneratingOverlay } from '@/components/GeneratingOverlay';
-import { Playlist, Track } from '@/types';
+import { Playlist } from '@/types';
 import type { DbPlaylistWithTracks, DbTrack } from '@/lib/supabase/types';
 
 const GREETINGS = [
@@ -14,6 +14,21 @@ const GREETINGS = [
   "Let's make something amazing today!",
   "What's the vibe today?",
 ];
+
+// Session response type
+interface SessionResponse {
+  success: boolean;
+  user?: {
+    id: string;
+    createdAt: string;
+  };
+  session?: {
+    id: string;
+    createdAt: string;
+  };
+  isNewSession?: boolean;
+  error?: string;
+}
 
 // Convert database playlist to app playlist format
 function dbToPlaylist(db: DbPlaylistWithTracks): Playlist {
@@ -47,9 +62,35 @@ export default function Home() {
   const [currentPlaylist, setCurrentPlaylist] = useState<Playlist | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [savedPlaylists, setSavedPlaylists] = useState<Playlist[]>([]);
+  const [sessionInitialized, setSessionInitialized] = useState(false);
 
-  // Load saved playlists from Supabase
-  const fetchPlaylists = async () => {
+  // Initialize session - creates or validates session cookie
+  const initializeSession = useCallback(async () => {
+    try {
+      const res = await fetch('/api/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (res.ok) {
+        const data: SessionResponse = await res.json();
+        if (data.success) {
+          console.log(
+            data.isNewSession 
+              ? 'New session created' 
+              : 'Existing session validated'
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Failed to initialize session:', error);
+    } finally {
+      setSessionInitialized(true);
+    }
+  }, []);
+
+  // Load saved playlists from Supabase (filtered by session)
+  const fetchPlaylists = useCallback(async () => {
     try {
       const res = await fetch('/api/playlists');
       if (res.ok) {
@@ -65,14 +106,23 @@ export default function Home() {
     } catch (error) {
       console.error('Failed to fetch playlists:', error);
     }
-  };
+  }, []);
 
+  // Initialize session on mount, then fetch playlists
   useEffect(() => {
     // Random greeting on mount
     setGreeting(GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
-    // Load saved playlists from Supabase
-    fetchPlaylists();
-  }, []);
+    
+    // Initialize session first
+    initializeSession();
+  }, [initializeSession]);
+
+  // Fetch playlists once session is initialized
+  useEffect(() => {
+    if (sessionInitialized) {
+      fetchPlaylists();
+    }
+  }, [sessionInitialized, fetchPlaylists]);
 
   const handleSubmit = async (data: {
     prompt: string;
@@ -241,7 +291,7 @@ export default function Home() {
     <div className="min-h-screen bg-[var(--base-surface-1)] flex flex-col relative overflow-hidden">
       {/* Background glow */}
       <div 
-        className="absolute top-[-375px] left-1/2 -translate-x-1/2 w-[1058px] h-[506px] opacity-30 pointer-events-none"
+        className="absolute top-[-200px] sm:top-[-300px] md:top-[-375px] left-1/2 -translate-x-1/2 w-[500px] sm:w-[800px] md:w-[1058px] h-[300px] sm:h-[400px] md:h-[506px] opacity-30 pointer-events-none"
         style={{
           background: 'radial-gradient(ellipse at center, rgba(80, 161, 255, 0.4) 0%, transparent 70%)',
           filter: 'blur(80px)',
@@ -249,36 +299,24 @@ export default function Home() {
       />
 
       {/* Header */}
-      <header className="relative z-10 w-full px-8 lg:px-[216px]">
-        <nav className="flex items-center justify-between py-5 pb-1.5">
+      <header className="relative z-10 w-full px-4 sm:px-6 md:px-8 lg:px-[216px]">
+        <nav className="flex items-center justify-between py-4 sm:py-5">
           <Logo />
           
-          <div className="flex items-center gap-3">
-            <button
-              className="flex items-center justify-center h-9 px-3 rounded-full font-semibold text-sm text-[var(--text-light-primary)] transition-all hover:brightness-110"
-              style={{
-                backgroundImage: `linear-gradient(180deg, rgba(20, 20, 20, 0) 0%, rgba(20, 20, 20, 0.36) 100%), linear-gradient(90deg, #50A1FF 0%, #50A1FF 100%)`,
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-              }}
-            >
-              Create
-            </button>
-            
-            {/* Avatar placeholder */}
-            <div className="w-10 h-10 rounded-full border border-[var(--base-border)] bg-gradient-to-br from-orange-400 to-red-500 overflow-hidden">
-              <div className="w-full h-full flex items-center justify-center text-white font-bold">
-                A
-              </div>
+          {/* Avatar */}
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-[var(--base-border)] bg-gradient-to-br from-orange-400 to-red-500 overflow-hidden flex-shrink-0">
+            <div className="w-full h-full flex items-center justify-center text-white font-bold text-sm sm:text-base">
+              A
             </div>
           </div>
         </nav>
       </header>
 
       {/* Main Content */}
-      <main className="relative z-10 flex-1 flex flex-col items-center pt-[50px] px-4 lg:px-[216px]">
+      <main className="relative z-10 flex-1 flex flex-col items-center pt-8 sm:pt-12 md:pt-[50px] px-4 sm:px-6 md:px-8 lg:px-[216px]">
         {/* Greeting */}
-        <div className="text-center pb-[42px]">
-          <h1 className="text-[30px] leading-[38px] tracking-[-0.6px] text-[var(--text-dark-secondary)] max-w-[640px]">
+        <div className="text-center pb-6 sm:pb-8 md:pb-[42px]">
+          <h1 className="text-2xl sm:text-[28px] md:text-[30px] leading-tight sm:leading-[36px] md:leading-[38px] tracking-[-0.5px] sm:tracking-[-0.6px] text-[var(--text-dark-secondary)] max-w-[640px] px-2">
             {greeting.split('!').map((part, i, arr) => (
               <span key={i}>
                 {i === 0 ? <span className="block">{part}!</span> : null}

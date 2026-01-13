@@ -2,15 +2,31 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getPlaylists,
   createPlaylistWithTracks,
+  getSessionWithUser,
 } from '@/lib/supabase/database';
+import { getSessionTokenFromRequest } from '@/lib/session';
 import type { InsertPlaylist, InsertTrack } from '@/lib/supabase/types';
 
 /**
- * GET /api/playlists - Get all playlists
+ * Helper to get user_id from session token in request
  */
-export async function GET() {
+async function getUserIdFromRequest(request: NextRequest): Promise<string | null> {
+  const token = getSessionTokenFromRequest(request);
+  if (!token) return null;
+  
+  const sessionData = await getSessionWithUser(token);
+  return sessionData?.user.id ?? null;
+}
+
+/**
+ * GET /api/playlists - Get playlists for the current user
+ */
+export async function GET(request: NextRequest) {
   try {
-    const playlists = await getPlaylists();
+    const userId = await getUserIdFromRequest(request);
+    
+    // Get playlists filtered by user_id (if available)
+    const playlists = await getPlaylists(userId ?? undefined);
     return NextResponse.json({ playlists });
   } catch (error) {
     console.error('Error fetching playlists:', error);
@@ -36,8 +52,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create playlist data
+    // Get user_id from session (if available)
+    const userId = await getUserIdFromRequest(request);
+
+    // Create playlist data with user_id
     const playlistData: InsertPlaylist = {
+      user_id: userId,
       name: prompt.slice(0, 50) + (prompt.length > 50 ? '...' : ''),
       prompt,
       genre: genre || null,

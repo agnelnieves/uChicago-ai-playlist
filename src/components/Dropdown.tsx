@@ -39,14 +39,14 @@ export function Dropdown({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1 h-9 px-3 rounded-full border border-[var(--base-border)] bg-transparent text-sm font-semibold text-white hover:bg-white/5 transition-colors"
+        className="flex items-center gap-0.5 sm:gap-1 h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border border-[var(--base-border)] bg-transparent text-xs sm:text-sm font-semibold text-white hover:bg-white/5 transition-colors"
       >
-        <span>{selectedOption?.label || label}</span>
-        <ChevronDownIcon className={`w-5 h-5 text-[#9b9b9b] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <span className="truncate max-w-[60px] sm:max-w-none">{selectedOption?.label || label}</span>
+        <ChevronDownIcon className={`w-4 h-4 sm:w-5 sm:h-5 text-[#9b9b9b] transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 py-2 min-w-[160px] bg-[var(--base-fill-1)] border border-[var(--base-border)] rounded-xl shadow-xl z-50 animate-fade-in">
+        <div className="absolute top-full left-0 mt-2 py-1.5 sm:py-2 min-w-[140px] sm:min-w-[160px] max-h-[280px] overflow-y-auto bg-[var(--base-fill-1)] border border-[var(--base-border)] rounded-xl shadow-xl z-50 animate-fade-in">
           {placeholder && (
             <button
               type="button"
@@ -54,7 +54,7 @@ export function Dropdown({
                 onChange(undefined);
                 setIsOpen(false);
               }}
-              className={`w-full px-4 py-2 text-left text-sm hover:bg-white/10 transition-colors ${
+              className={`w-full px-3 sm:px-4 py-1.5 sm:py-2 text-left text-xs sm:text-sm hover:bg-white/10 transition-colors ${
                 !value ? 'text-[var(--accent-blue)]' : 'text-[var(--text-dark-secondary)]'
               }`}
             >
@@ -69,7 +69,7 @@ export function Dropdown({
                 onChange(option.value);
                 setIsOpen(false);
               }}
-              className={`w-full px-4 py-2 text-left text-sm hover:bg-white/10 transition-colors ${
+              className={`w-full px-3 sm:px-4 py-1.5 sm:py-2 text-left text-xs sm:text-sm hover:bg-white/10 transition-colors ${
                 value === option.value ? 'text-[var(--accent-blue)]' : 'text-white'
               }`}
             >
