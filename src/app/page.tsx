@@ -278,30 +278,46 @@ export default function Home() {
         }
       }
 
-      // Finish generation - update playlist status
-      setCurrentPlaylist(prev => {
-        if (!prev) return prev;
-        const hasReady = prev.tracks.some(t => t.status === 'ready');
-        const allReady = prev.tracks.every(t => t.status === 'ready');
-        
+      // Finish generation - update playlist status and navigate
+      // We need to get the current state to determine final status
+      const currentState = await new Promise<Playlist | null>((resolve) => {
+        setCurrentPlaylist(prev => {
+          resolve(prev);
+          return prev;
+        });
+      });
+
+      if (currentState) {
+        const hasReady = currentState.tracks.some(t => t.status === 'ready');
+        const allReady = currentState.tracks.every(t => t.status === 'ready');
         const finalStatus = allReady ? 'ready' : hasReady ? 'partial' : 'error';
-        
-        // Update playlist status in database
-        fetch(`/api/playlists/${prev.id}`, {
+
+        // Update playlist status in database and wait for it
+        await fetch(`/api/playlists/${currentState.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: finalStatus }),
         });
 
-        return {
+        // Update local state
+        setCurrentPlaylist(prev => prev ? {
           ...prev,
           status: finalStatus as Playlist['status'],
           updatedAt: new Date(),
-        };
-      });
+        } : prev);
 
-      // Navigate to the playlist page after generation completes
-      router.push(`/p/${newPlaylist.id}`);
+        // Small delay to ensure database writes are committed
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Navigate to the appropriate page based on mode
+        if (data.mode === 'single' && currentState.tracks.length === 1) {
+          // For single tracks, navigate to track page
+          router.push(`/t/${currentState.tracks[0].id}`);
+        } else {
+          // For playlists, navigate to playlist page
+          router.push(`/p/${newPlaylist.id}`);
+        }
+      }
     } catch (error) {
       console.error('Error creating playlist:', error);
       setIsGenerating(false);
