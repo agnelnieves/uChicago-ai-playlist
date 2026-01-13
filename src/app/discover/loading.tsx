@@ -98,29 +98,6 @@ export default function DiscoverLoading() {
           </div>
         </section>
       </main>
-
-      {/* Shimmer animation styles */}
-      <style jsx>{`
-        .skeleton-shimmer {
-          background: linear-gradient(
-            90deg,
-            transparent 0%,
-            rgba(255, 255, 255, 0.05) 50%,
-            transparent 100%
-          );
-          background-size: 200% 100%;
-          animation: shimmer 1.5s infinite;
-        }
-        
-        @keyframes shimmer {
-          0% {
-            background-position: 200% 0;
-          }
-          100% {
-            background-position: -200% 0;
-          }
-        }
-      `}</style>
     </div>
   );
 }
