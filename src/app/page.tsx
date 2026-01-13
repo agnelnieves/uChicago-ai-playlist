@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Logo } from '@/components/Logo';
 import { PlaylistForm } from '@/components/PlaylistForm';
-import { PlaylistPlayer } from '@/components/PlaylistPlayer';
-import { PlaylistModal } from '@/components/PlaylistModal';
 import { GeneratingOverlay } from '@/components/GeneratingOverlay';
 import { Playlist } from '@/types';
 import type { DbPlaylistWithTracks, DbTrack } from '@/lib/supabase/types';
@@ -62,12 +61,10 @@ function dbToPlaylist(db: DbPlaylistWithTracks): Playlist {
 }
 
 export default function Home() {
+  const router = useRouter();
   const [greeting, setGreeting] = useState(GREETINGS[0]);
   const [currentPlaylist, setCurrentPlaylist] = useState<Playlist | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [savedPlaylists, setSavedPlaylists] = useState<Playlist[]>([]);
-  const [sessionInitialized, setSessionInitialized] = useState(false);
-  const [showPlaylistModal, setShowPlaylistModal] = useState(false);
 
   // Initialize session - creates or validates session cookie
   const initializeSession = useCallback(async () => {
@@ -89,31 +86,10 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Failed to initialize session:', error);
-    } finally {
-      setSessionInitialized(true);
     }
   }, []);
 
-  // Load saved playlists from Supabase (filtered by session)
-  const fetchPlaylists = useCallback(async () => {
-    try {
-      const res = await fetch('/api/playlists');
-      if (res.ok) {
-        const data = await res.json();
-        // Note: These don't include tracks, just playlist metadata
-        setSavedPlaylists(data.playlists.map((p: DbPlaylistWithTracks) => ({
-          ...p,
-          tracks: p.tracks || [],
-          createdAt: new Date(p.created_at),
-          updatedAt: new Date(p.updated_at),
-        })));
-      }
-    } catch (error) {
-      console.error('Failed to fetch playlists:', error);
-    }
-  }, []);
-
-  // Initialize session on mount, then fetch playlists
+  // Initialize session on mount
   useEffect(() => {
     // Random greeting on mount
     setGreeting(GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
@@ -121,13 +97,6 @@ export default function Home() {
     // Initialize session first
     initializeSession();
   }, [initializeSession]);
-
-  // Fetch playlists once session is initialized
-  useEffect(() => {
-    if (sessionInitialized) {
-      fetchPlaylists();
-    }
-  }, [sessionInitialized, fetchPlaylists]);
 
   // Helper function to generate an image
   const generateImage = async (
@@ -165,7 +134,6 @@ export default function Home() {
     const trackDuration = 60; // 60 seconds per track
 
     setIsGenerating(true);
-    setShowPlaylistModal(false);
 
     try {
       // Create playlist in Supabase first
@@ -332,19 +300,13 @@ export default function Home() {
         };
       });
 
-      // Refresh saved playlists
-      fetchPlaylists();
-      
-      // Show the playlist modal after generation completes
-      setShowPlaylistModal(true);
+      // Navigate to the playlist page after generation completes
+      router.push(`/p/${newPlaylist.id}`);
     } catch (error) {
       console.error('Error creating playlist:', error);
+      setIsGenerating(false);
     }
-
-    setIsGenerating(false);
   };
-
-  const hasReadyTracks = currentPlaylist?.tracks.some(t => t.status === 'ready');
 
   return (
     <div className="min-h-screen bg-[var(--base-surface-1)] flex flex-col relative overflow-hidden">
@@ -376,7 +338,7 @@ export default function Home() {
         {/* Greeting */}
         <div className="text-center pb-6 sm:pb-8 md:pb-[42px]">
           <h1 className="text-2xl sm:text-[28px] md:text-[30px] leading-tight sm:leading-[36px] md:leading-[38px] tracking-[-0.5px] sm:tracking-[-0.6px] text-[var(--text-dark-secondary)] max-w-[640px] px-2">
-            {greeting.split('!').map((part, i, arr) => (
+            {greeting.split('!').map((part, i) => (
               <span key={i}>
                 {i === 0 ? <span className="block">{part}!</span> : null}
                 {i === 1 && part ? <span className="block">{part}</span> : null}
@@ -392,19 +354,6 @@ export default function Home() {
       {/* Generating Overlay */}
       {isGenerating && currentPlaylist && (
         <GeneratingOverlay playlist={currentPlaylist} />
-      )}
-
-      {/* Playlist Modal */}
-      {!isGenerating && showPlaylistModal && currentPlaylist && hasReadyTracks && (
-        <PlaylistModal 
-          playlist={currentPlaylist} 
-          onClose={() => setShowPlaylistModal(false)} 
-        />
-      )}
-
-      {/* Player (shows when modal is closed but playlist exists) */}
-      {!isGenerating && !showPlaylistModal && currentPlaylist && hasReadyTracks && (
-        <PlaylistPlayer playlist={currentPlaylist} />
       )}
     </div>
   );

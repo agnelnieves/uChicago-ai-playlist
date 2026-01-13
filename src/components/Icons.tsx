@@ -213,3 +213,41 @@ export function PlayCircleIcon({ className = 'w-5 h-5' }: { className?: string }
   );
 }
 
+export function ShareIcon({ className = 'w-5 h-5' }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M13 7l4-4m0 0l-4-4m4 4H7a4 4 0 00-4 4v6"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function HomeIcon({ className = 'w-5 h-5' }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M3 10l7-7 7 7M5 8v8a1 1 0 001 1h3v-5h2v5h3a1 1 0 001-1V8"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+

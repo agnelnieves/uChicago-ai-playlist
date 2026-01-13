@@ -213,19 +213,59 @@ create trigger update_sessions_last_seen_at
   execute function update_last_seen_at_column();
 
 -- ============================================
--- STORAGE BUCKET FOR AUDIO FILES (Optional)
+-- STORAGE BUCKETS FOR MEDIA FILES
 -- ============================================
--- Run this separately if you want to store audio files in Supabase Storage
--- insert into storage.buckets (id, name, public) values ('audio', 'audio', true);
+-- IMPORTANT: Run these commands in the SQL editor to create storage buckets
 
--- Storage policy for public access
--- create policy "Anyone can read audio files"
---   on storage.objects for select
---   to anon
---   using (bucket_id = 'audio');
+-- Create audio bucket for music files
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('audio', 'audio', true, 52428800, array['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg'])
+on conflict (id) do nothing;
 
--- create policy "Anyone can upload audio files"
---   on storage.objects for insert
---   to anon
---   with check (bucket_id = 'audio');
+-- Create images bucket for cover art and thumbnails
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('images', 'images', true, 10485760, array['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'])
+on conflict (id) do nothing;
+
+-- Storage policies for audio bucket
+create policy "Anyone can read audio files"
+  on storage.objects for select
+  to anon
+  using (bucket_id = 'audio');
+
+create policy "Anyone can upload audio files"
+  on storage.objects for insert
+  to anon
+  with check (bucket_id = 'audio');
+
+create policy "Anyone can update audio files"
+  on storage.objects for update
+  to anon
+  using (bucket_id = 'audio');
+
+create policy "Anyone can delete audio files"
+  on storage.objects for delete
+  to anon
+  using (bucket_id = 'audio');
+
+-- Storage policies for images bucket
+create policy "Anyone can read image files"
+  on storage.objects for select
+  to anon
+  using (bucket_id = 'images');
+
+create policy "Anyone can upload image files"
+  on storage.objects for insert
+  to anon
+  with check (bucket_id = 'images');
+
+create policy "Anyone can update image files"
+  on storage.objects for update
+  to anon
+  using (bucket_id = 'images');
+
+create policy "Anyone can delete image files"
+  on storage.objects for delete
+  to anon
+  using (bucket_id = 'images');
 

@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
+import { createClient } from '@supabase/supabase-js';
 
 const genAI = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY || '' });
+
+// Create a Supabase client for storage operations
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 interface GenerateImageRequest {
   prompt: string;
@@ -11,7 +18,7 @@ interface GenerateImageRequest {
 }
 
 /**
- * POST /api/generate-image - Generate an image using Google Imagen 3
+ * POST /api/generate-image - Generate an image using Google Gemini
  */
 export async function POST(request: NextRequest) {
   try {
@@ -35,39 +42,73 @@ export async function POST(request: NextRequest) {
     // Build an enhanced prompt for better image generation
     const enhancedPrompt = buildImagePrompt(prompt, type, genre, mood);
 
-    // Generate image using Imagen 3
-    const response = await genAI.models.generateImages({
-      model: 'imagen-3.0-generate-002',
-      prompt: enhancedPrompt,
+    // Generate image using Gemini with image generation capability
+    const response = await genAI.models.generateContent({
+      model: 'gemini-2.0-flash-exp-image-generation',
+      contents: enhancedPrompt,
       config: {
-        numberOfImages: 1,
-        outputMimeType: 'image/png',
-        aspectRatio: type === 'playlist_cover' ? '1:1' : '1:1',
+        responseModalities: ['Text', 'Image'],
       },
     });
 
-    if (!response.generatedImages || response.generatedImages.length === 0) {
+    // Extract image from response
+    const parts = response.candidates?.[0]?.content?.parts;
+    if (!parts || parts.length === 0) {
       return NextResponse.json(
         { error: 'No image generated' },
         { status: 500 }
       );
     }
 
-    const generatedImage = response.generatedImages[0];
-    
-    // Return the base64 image data
-    if (generatedImage.image?.imageBytes) {
-      const base64Data = generatedImage.image.imageBytes;
-      const dataUrl = `data:image/png;base64,${base64Data}`;
-      
-      return NextResponse.json({ 
-        imageUrl: dataUrl,
-        success: true 
-      });
+    // Find the image part in the response
+    for (const part of parts) {
+      if (part.inlineData?.data) {
+        const base64Data = part.inlineData.data;
+        const mimeType = part.inlineData.mimeType || 'image/png';
+        
+        // Convert base64 to buffer for upload
+        const buffer = Buffer.from(base64Data, 'base64');
+        
+        // Generate unique file path
+        const timestamp = Date.now();
+        const randomSuffix = Math.random().toString(36).substring(2, 8);
+        const extension = mimeType.split('/')[1] || 'png';
+        const folder = type === 'playlist_cover' ? 'covers' : 'thumbnails';
+        const filePath = `${folder}/${timestamp}-${randomSuffix}.${extension}`;
+        
+        // Upload to Supabase Storage
+        const { error: uploadError } = await supabase.storage
+          .from('images')
+          .upload(filePath, buffer, {
+            contentType: mimeType,
+            cacheControl: '3600',
+            upsert: false,
+          });
+        
+        if (uploadError) {
+          console.error('Failed to upload image to storage:', uploadError);
+          // Fallback to base64 if storage upload fails
+          return NextResponse.json({ 
+            imageUrl: `data:${mimeType};base64,${base64Data}`,
+            success: true,
+            storageError: uploadError.message,
+          });
+        }
+        
+        // Get public URL
+        const { data: publicUrlData } = supabase.storage
+          .from('images')
+          .getPublicUrl(filePath);
+        
+        return NextResponse.json({ 
+          imageUrl: publicUrlData.publicUrl,
+          success: true 
+        });
+      }
     }
 
     return NextResponse.json(
-      { error: 'Failed to get image data' },
+      { error: 'Failed to get image data from response' },
       { status: 500 }
     );
   } catch (error) {

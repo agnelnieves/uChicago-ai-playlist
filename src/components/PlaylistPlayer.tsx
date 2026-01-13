@@ -29,10 +29,18 @@ export function PlaylistPlayer({ playlist, onClose }: PlaylistPlayerProps) {
   const currentTrack = readyTracks[currentTrackIndex];
 
   useEffect(() => {
-    if (audioRef.current && currentTrack?.audioUrl) {
-      audioRef.current.src = currentTrack.audioUrl;
+    const audio = audioRef.current;
+    if (audio && currentTrack?.audioUrl) {
+      audio.src = currentTrack.audioUrl;
       if (isPlaying) {
-        audioRef.current.play();
+        // Wait for audio to be ready before playing
+        const playWhenReady = () => {
+          audio.play().catch(() => {
+            // Ignore interruption errors - they're benign
+          });
+        };
+        audio.addEventListener('canplay', playWhenReady, { once: true });
+        return () => audio.removeEventListener('canplay', playWhenReady);
       }
     }
   }, [currentTrackIndex, currentTrack?.audioUrl]);
@@ -49,7 +57,9 @@ export function PlaylistPlayer({ playlist, onClose }: PlaylistPlayerProps) {
     if (isPlaying) {
       audioRef.current.pause();
     } else {
-      audioRef.current.play();
+      audioRef.current.play().catch(() => {
+        // Ignore interruption errors - they're benign
+      });
     }
     setIsPlaying(!isPlaying);
   };
