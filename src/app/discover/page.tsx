@@ -1,46 +1,56 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Logo } from '@/components/Logo';
 import { MusicNoteIcon, PlayIcon } from '@/components/Icons';
-import type { DbTrack, DbPlaylistWithTracks } from '@/lib/supabase/types';
+import { useDiscoverCache } from '@/lib/DiscoverCache';
+import type { DbTrack } from '@/lib/supabase/types';
 
-interface DiscoverData {
-  recentTracks: DbTrack[];
-  featuredPlaylists: DbPlaylistWithTracks[];
+// Skeleton components for inline loading states
+function TrackSkeleton() {
+  return (
+    <div className="flex-shrink-0 w-[200px] sm:w-[240px] md:w-[280px] animate-pulse">
+      <div className="relative aspect-[16/10] rounded-2xl overflow-hidden bg-[var(--base-fill-1)] mb-3" />
+      <div className="px-1 space-y-2">
+        <div className="h-5 bg-[var(--base-fill-1)] rounded-md w-3/4" />
+        <div className="h-4 bg-[var(--base-fill-1)] rounded-md w-1/2" />
+      </div>
+    </div>
+  );
+}
+
+function PlaylistSkeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="relative aspect-square rounded-2xl overflow-hidden bg-[var(--base-fill-1)] mb-3" />
+      <div className="space-y-2">
+        <div className="h-4 bg-[var(--base-fill-1)] rounded-md w-3/4" />
+        <div className="h-3 bg-[var(--base-fill-1)] rounded-md w-1/2" />
+      </div>
+    </div>
+  );
 }
 
 export default function DiscoverPage() {
   const router = useRouter();
-  const [data, setData] = useState<DiscoverData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading, isRefreshing, fetchData } = useDiscoverCache();
 
+  // Fetch data on mount (will use cache if available and valid)
   useEffect(() => {
-    async function fetchDiscoverData() {
-      try {
-        const res = await fetch('/api/discover');
-        if (!res.ok) {
-          throw new Error('Failed to fetch');
-        }
-        const result = await res.json();
-        setData(result);
-      } catch (err) {
-        console.error('Error fetching discover data:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchDiscoverData();
-  }, []);
+    fetchData();
+  }, [fetchData]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  // Show skeleton only on first load (no cached data)
+  const showSkeleton = isLoading && !data;
 
   return (
     <div className="min-h-screen bg-[var(--base-surface-1)] flex flex-col relative overflow-hidden">
@@ -88,21 +98,48 @@ export default function DiscoverPage() {
       <main className="relative z-10 flex-1 pt-6 sm:pt-10 pb-12">
         {/* Page Title */}
         <div className="px-4 sm:px-6 md:px-8 lg:px-[216px] mb-8 sm:mb-10">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">
-            Discover
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">
+              Discover
+            </h1>
+            {/* Subtle refresh indicator */}
+            {isRefreshing && (
+              <div className="w-4 h-4 border-2 border-[var(--accent-blue)] border-t-transparent rounded-full animate-spin" />
+            )}
+          </div>
           <p className="text-[var(--text-dark-secondary)] mt-2">
             Explore AI-generated music from the community
           </p>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="flex items-center gap-3">
-              <div className="w-5 h-5 border-2 border-[var(--accent-blue)] border-t-transparent rounded-full animate-spin" />
-              <span className="text-[var(--text-dark-secondary)]">Loading...</span>
-            </div>
-          </div>
+        {showSkeleton ? (
+          <>
+            {/* Skeleton for New Songs */}
+            <section className="mb-10 sm:mb-14">
+              <div className="px-4 sm:px-6 md:px-8 lg:px-[216px] mb-4 sm:mb-6">
+                <div className="h-6 bg-[var(--base-fill-1)] rounded-md w-32 animate-pulse" />
+              </div>
+              <div className="flex gap-4 overflow-x-auto pb-4 px-4 sm:px-6 md:px-8 lg:px-[216px] scrollbar-hide">
+                {[...Array(5)].map((_, i) => (
+                  <TrackSkeleton key={i} />
+                ))}
+              </div>
+            </section>
+
+            {/* Skeleton for Featured Playlists */}
+            <section>
+              <div className="px-4 sm:px-6 md:px-8 lg:px-[216px] mb-4 sm:mb-6">
+                <div className="h-6 bg-[var(--base-fill-1)] rounded-md w-40 animate-pulse" />
+              </div>
+              <div className="px-4 sm:px-6 md:px-8 lg:px-[216px]">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-6 sm:gap-x-5 sm:gap-y-8">
+                  {[...Array(6)].map((_, i) => (
+                    <PlaylistSkeleton key={i} />
+                  ))}
+                </div>
+              </div>
+            </section>
+          </>
         ) : (
           <>
             {/* New Songs Section */}
