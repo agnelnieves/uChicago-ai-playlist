@@ -20,6 +20,30 @@ interface TrackResult {
   error?: string;
 }
 
+/**
+ * Convert an async iterable stream to a base64 data URL
+ */
+async function streamToDataUrl(stream: AsyncIterable<Uint8Array>): Promise<string> {
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of stream) {
+    chunks.push(chunk);
+  }
+  
+  // Calculate total length
+  const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+  const combined = new Uint8Array(totalLength);
+  
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.length;
+  }
+  
+  // Convert to base64
+  const base64 = Buffer.from(combined).toString('base64');
+  return `data:audio/mpeg;base64,${base64}`;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const apiKey = process.env.ELEVENLABS_API_KEY;
@@ -58,14 +82,18 @@ export async function POST(request: NextRequest) {
     
     for (let i = 0; i < trackPrompts.length; i++) {
       try {
-        const response = await client.textToMusic.createWithUrl({
+        // Use music.compose() which returns an audio stream
+        const audioStream = await client.music.compose({
           prompt: trackPrompts[i],
-          duration: Math.min(Math.max(trackDuration, 10), 300),
+          musicLengthMs: Math.min(Math.max(trackDuration, 10), 300) * 1000,
         });
+        
+        // Convert stream to base64 data URL
+        const audioUrl = await streamToDataUrl(audioStream);
         
         results.push({
           index: i,
-          audioUrl: response.audioUrl || null,
+          audioUrl,
           prompt: trackPrompts[i],
         });
       } catch (error) {
