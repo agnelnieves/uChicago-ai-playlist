@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Logo } from '@/components/Logo';
 import { PlaylistForm } from '@/components/PlaylistForm';
 import { GeneratingOverlay } from '@/components/GeneratingOverlay';
-import { DiscoverFeed } from '@/components/DiscoverFeed';
 import { Playlist } from '@/types';
 import type { DbPlaylistWithTracks, DbTrack } from '@/lib/supabase/types';
 
@@ -380,19 +380,34 @@ export default function Home() {
         <nav className="flex items-center justify-between py-4 sm:py-5">
           <Logo />
           
-          {/* Avatar */}
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-[var(--base-border)] bg-gradient-to-br from-orange-400 to-red-500 overflow-hidden flex-shrink-0">
-            <div className="w-full h-full flex items-center justify-center text-white font-bold text-sm sm:text-base">
-              A
+          <div className="flex items-center gap-4 sm:gap-6">
+            <Link 
+              href="/discover" 
+              className="text-[var(--text-dark-secondary)] hover:text-white transition-colors text-sm sm:text-base"
+            >
+              Discover
+            </Link>
+            <Link 
+              href="/" 
+              className="text-white font-medium text-sm sm:text-base"
+            >
+              Create
+            </Link>
+            
+            {/* Avatar */}
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-[var(--base-border)] bg-gradient-to-br from-orange-400 to-red-500 overflow-hidden flex-shrink-0">
+              <div className="w-full h-full flex items-center justify-center text-white font-bold text-sm sm:text-base">
+                A
+              </div>
             </div>
           </div>
         </nav>
       </header>
 
       {/* Main Content */}
-      <main className="relative z-10 flex-1 flex flex-col items-center pt-8 sm:pt-12 md:pt-[50px]">
+      <main className="relative z-10 flex-1 flex flex-col items-center pt-8 sm:pt-12 md:pt-[50px] px-4 sm:px-6 md:px-8 lg:px-[216px]">
         {/* Greeting */}
-        <div className="text-center pb-6 sm:pb-8 md:pb-[42px] px-4 sm:px-6 md:px-8 lg:px-[216px]">
+        <div className="text-center pb-6 sm:pb-8 md:pb-[42px]">
           <h1 className="text-2xl sm:text-[28px] md:text-[30px] leading-tight sm:leading-[36px] md:leading-[38px] tracking-[-0.5px] sm:tracking-[-0.6px] text-[var(--text-dark-secondary)] max-w-[640px] px-2">
             {greeting.split('!').map((part, i) => (
               <span key={i}>
@@ -404,12 +419,7 @@ export default function Home() {
         </div>
 
         {/* Form */}
-        <div className="px-4 sm:px-6 md:px-8 lg:px-[216px] w-full flex justify-center">
-          <PlaylistForm onSubmit={handleSubmit} isLoading={isGenerating} />
-        </div>
-
-        {/* Discover Feed */}
-        <DiscoverFeed />
+        <PlaylistForm onSubmit={handleSubmit} isLoading={isGenerating} />
       </main>
 
       {/* Generating Overlay */}

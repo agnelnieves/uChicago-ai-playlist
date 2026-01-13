@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Image from 'next/image';
 import { Track, Playlist } from '@/types';
 import { Logo } from '@/components/Logo';
@@ -233,7 +234,19 @@ export default function PlaylistPage({ params }: PlaylistPageProps) {
             <Logo />
           </button>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4 sm:gap-6">
+            <Link 
+              href="/discover" 
+              className="text-[var(--text-dark-secondary)] hover:text-white transition-colors text-sm sm:text-base"
+            >
+              Discover
+            </Link>
+            <Link 
+              href="/" 
+              className="text-[var(--text-dark-secondary)] hover:text-white transition-colors text-sm sm:text-base"
+            >
+              Create
+            </Link>
             <button
               onClick={handleShare}
               className="flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--base-border)] text-[var(--text-dark-secondary)] hover:text-white hover:border-white/30 transition-all text-sm"
