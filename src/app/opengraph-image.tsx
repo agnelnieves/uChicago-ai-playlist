@@ -79,7 +79,7 @@ export default async function Image() {
           Create unique AI-generated music in seconds
         </div>
 
-        {/* Features */}
+        {/* Features - without map */}
         <div
           style={{
             display: 'flex',
@@ -87,30 +87,69 @@ export default async function Image() {
             marginTop: 48,
           }}
         >
-          {['Custom Tracks', 'AI Playlists', 'Instant Generation'].map((feature) => (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '12px 24px',
+              borderRadius: 999,
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+            }}
+          >
             <div
-              key={feature}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '12px 24px',
-                borderRadius: 999,
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: '#50A1FF',
               }}
-            >
-              <div
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: '#50A1FF',
-                }}
-              />
-              <span style={{ color: 'white', fontSize: 20 }}>{feature}</span>
-            </div>
-          ))}
+            />
+            <span style={{ color: 'white', fontSize: 20 }}>Custom Tracks</span>
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '12px 24px',
+              borderRadius: 999,
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+            }}
+          >
+            <div
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: '#50A1FF',
+              }}
+            />
+            <span style={{ color: 'white', fontSize: 20 }}>AI Playlists</span>
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '12px 24px',
+              borderRadius: 999,
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+            }}
+          >
+            <div
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: '#50A1FF',
+              }}
+            />
+            <span style={{ color: 'white', fontSize: 20 }}>Instant Generation</span>
+          </div>
         </div>
       </div>
     ),

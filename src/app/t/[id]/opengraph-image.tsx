@@ -1,7 +1,8 @@
 import { ImageResponse } from 'next/og';
 import { getTrackById } from '@/lib/supabase/database';
 
-export const runtime = 'edge';
+// Use nodejs runtime for database access (edge doesn't support cookies())
+export const runtime = 'nodejs';
 
 export const alt = 'Track - Hyde';
 export const size = {

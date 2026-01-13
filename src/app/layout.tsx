@@ -56,20 +56,11 @@ export const metadata: Metadata = {
     siteName: "Hyde",
     title: "Hyde - AI Music Generator",
     description: "Create unique AI-generated music in seconds. Generate custom tracks and playlists powered by advanced AI technology.",
-    images: [
-      {
-        url: "/opengraph-image",
-        width: 1200,
-        height: 630,
-        alt: "Hyde - AI Music Generator",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Hyde - AI Music Generator",
     description: "Create unique AI-generated music in seconds. Generate custom tracks and playlists powered by advanced AI technology.",
-    images: ["/opengraph-image"],
     creator: "@hyde_ai",
   },
   icons: {

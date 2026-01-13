@@ -90,7 +90,7 @@ export default async function Image() {
           Explore AI-generated music from the community
         </div>
 
-        {/* Music cards preview */}
+        {/* Music cards preview - without map */}
         <div
           style={{
             display: 'flex',
@@ -98,35 +98,70 @@ export default async function Image() {
             marginTop: 48,
           }}
         >
-          {[1, 2, 3, 4].map((i) => (
-            <div
-              key={i}
-              style={{
-                width: 160,
-                height: 160,
-                borderRadius: 16,
-                background: `linear-gradient(135deg, ${
-                  i === 1 ? '#8B5CF6' : i === 2 ? '#50A1FF' : i === 3 ? '#EC4899' : '#10B981'
-                } 0%, ${
-                  i === 1 ? '#6366F1' : i === 2 ? '#3B82F6' : i === 3 ? '#F43F5E' : '#059669'
-                } 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: i === 1 || i === 4 ? 0.6 : 1,
-                transform: i === 1 || i === 4 ? 'scale(0.9)' : 'scale(1)',
-              }}
-            >
-              <svg
-                width="48"
-                height="48"
-                viewBox="0 0 24 24"
-                fill="rgba(255,255,255,0.5)"
-              >
-                <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-              </svg>
-            </div>
-          ))}
+          <div
+            style={{
+              width: 140,
+              height: 140,
+              borderRadius: 16,
+              background: 'linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: 0.6,
+              transform: 'scale(0.9)',
+            }}
+          >
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="rgba(255,255,255,0.5)">
+              <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+            </svg>
+          </div>
+          <div
+            style={{
+              width: 160,
+              height: 160,
+              borderRadius: 16,
+              background: 'linear-gradient(135deg, #50A1FF 0%, #3B82F6 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="rgba(255,255,255,0.5)">
+              <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+            </svg>
+          </div>
+          <div
+            style={{
+              width: 160,
+              height: 160,
+              borderRadius: 16,
+              background: 'linear-gradient(135deg, #EC4899 0%, #F43F5E 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="rgba(255,255,255,0.5)">
+              <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+            </svg>
+          </div>
+          <div
+            style={{
+              width: 140,
+              height: 140,
+              borderRadius: 16,
+              background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: 0.6,
+              transform: 'scale(0.9)',
+            }}
+          >
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="rgba(255,255,255,0.5)">
+              <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+            </svg>
+          </div>
         </div>
       </div>
     ),
