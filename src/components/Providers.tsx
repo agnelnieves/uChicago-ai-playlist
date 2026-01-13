@@ -1,6 +1,7 @@
 'use client';
 
 import { GenerationProvider } from '@/lib/GenerationContext';
+import { DiscoverCacheProvider } from '@/lib/DiscoverCache';
 import { GenerationToast } from './GenerationToast';
 
 interface ProvidersProps {
@@ -10,8 +11,10 @@ interface ProvidersProps {
 export function Providers({ children }: ProvidersProps) {
   return (
     <GenerationProvider>
-      {children}
-      <GenerationToast />
+      <DiscoverCacheProvider>
+        {children}
+        <GenerationToast />
+      </DiscoverCacheProvider>
     </GenerationProvider>
   );
 }

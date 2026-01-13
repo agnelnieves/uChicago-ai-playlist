@@ -61,14 +61,14 @@ export function GenerationToast() {
   if (!isExpanded) {
     return (
       <div 
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-toast-slide-up"
+        className="fixed bottom-6 left-0 right-0 z-50 flex justify-center pointer-events-none animate-toast-slide-up-center"
         onClick={() => setIsExpanded(true)}
       >
         <div 
           className={`
             flex items-center gap-3 px-4 py-3 rounded-full
             bg-[var(--base-surface-2)] border border-[var(--base-border)]
-            shadow-xl shadow-black/30 cursor-pointer
+            shadow-xl shadow-black/30 cursor-pointer pointer-events-auto
             hover:border-[var(--accent-blue)]/50 transition-all duration-200
             min-w-[280px] max-w-[90vw]
           `}
@@ -160,12 +160,12 @@ export function GenerationToast() {
 
   // Expanded toast view
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-toast-slide-up">
+    <div className="fixed bottom-6 left-0 right-0 z-50 flex justify-center pointer-events-none animate-toast-slide-up-center">
       <div 
         className="
           bg-[var(--base-surface-2)] border border-[var(--base-border)]
           rounded-2xl shadow-xl shadow-black/30
-          w-[340px] max-w-[90vw] overflow-hidden
+          w-[340px] max-w-[90vw] overflow-hidden pointer-events-auto
         "
       >
         {/* Header */}
@@ -294,10 +294,10 @@ export function GenerationToast() {
             </button>
           ) : (
             <button
-              onClick={handleDismiss}
+              onClick={() => setIsExpanded(false)}
               className="flex-1 py-2.5 px-4 rounded-full border border-[var(--base-border)] text-[var(--text-dark-secondary)] text-sm font-medium hover:text-white hover:border-white/30 transition-colors"
             >
-              Continue Browsing
+              Minimize
             </button>
           )}
         </div>
