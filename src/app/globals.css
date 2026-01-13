@@ -1,8 +1,48 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Base Colors */
+  --base-surface-1: #141414;
+  --base-surface-2: #231f1f;
+  --base-fill-1: #333333;
+  --base-border: #3d3d3d;
+  
+  /* Text Colors */
+  --text-dark-primary: #ffffff;
+  --text-dark-secondary: rgba(255, 255, 255, 0.7);
+  --text-dark-tertiary: rgba(255, 255, 255, 0.36);
+  --text-light-primary: #141414;
+  
+  /* Alpha Colors */
+  --alpha-dark-200: rgba(255, 255, 255, 0.12);
+  --alpha-light-600: rgba(20, 20, 20, 0.36);
+  
+  /* Accent */
+  --accent-blue: #50A1FF;
+  
+  /* Spacing */
+  --spacing-0: 0px;
+  --spacing-3: 4px;
+  --spacing-4: 6px;
+  --spacing-7: 12px;
+  --spacing-9: 20px;
+  --spacing-11: 28px;
+  
+  /* Border Radius */
+  --radi-6: 12px;
+  --radi-10: 1000px;
+  
+  /* Font Sizes */
+  --font-size-sm: 14px;
+  --font-size-3xl: 30px;
+  
+  /* Line Heights */
+  --line-height-sm: 22px;
+  --line-height-xl: 32px;
+  --line-height-2xl: 38px;
+
+  --background: var(--base-surface-1);
+  --foreground: var(--text-dark-primary);
 }
 
 @theme inline {
@@ -12,15 +52,83 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--base-surface-1);
+  color: var(--text-dark-primary);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--base-surface-1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--base-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--alpha-dark-200);
+}
+
+/* Animation keyframes */
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.6s ease-out forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
 }
