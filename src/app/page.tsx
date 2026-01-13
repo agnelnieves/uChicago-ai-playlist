@@ -6,7 +6,7 @@ import { PlaylistForm } from '@/components/PlaylistForm';
 import { PlaylistPlayer } from '@/components/PlaylistPlayer';
 import { GeneratingOverlay } from '@/components/GeneratingOverlay';
 import { Playlist, Track } from '@/types';
-import { generateId, savePlaylist, getPlaylists } from '@/lib/storage';
+import type { DbPlaylistWithTracks, DbTrack } from '@/lib/supabase/types';
 
 const GREETINGS = [
   "Hey there! What would you like to listen today?",
@@ -15,17 +15,63 @@ const GREETINGS = [
   "What's the vibe today?",
 ];
 
+// Convert database playlist to app playlist format
+function dbToPlaylist(db: DbPlaylistWithTracks): Playlist {
+  return {
+    id: db.id,
+    name: db.name,
+    description: db.description || undefined,
+    prompt: db.prompt,
+    genre: db.genre || undefined,
+    mood: db.mood || undefined,
+    status: db.status,
+    createdAt: new Date(db.created_at),
+    updatedAt: new Date(db.updated_at),
+    tracks: db.tracks.map((t: DbTrack) => ({
+      id: t.id,
+      title: t.title,
+      prompt: t.prompt,
+      genre: t.genre || undefined,
+      mood: t.mood || undefined,
+      duration: t.duration,
+      audioUrl: t.audio_url || undefined,
+      status: t.status,
+      error: t.error || undefined,
+      createdAt: new Date(t.created_at),
+    })),
+  };
+}
+
 export default function Home() {
   const [greeting, setGreeting] = useState(GREETINGS[0]);
   const [currentPlaylist, setCurrentPlaylist] = useState<Playlist | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [savedPlaylists, setSavedPlaylists] = useState<Playlist[]>([]);
 
+  // Load saved playlists from Supabase
+  const fetchPlaylists = async () => {
+    try {
+      const res = await fetch('/api/playlists');
+      if (res.ok) {
+        const data = await res.json();
+        // Note: These don't include tracks, just playlist metadata
+        setSavedPlaylists(data.playlists.map((p: DbPlaylistWithTracks) => ({
+          ...p,
+          tracks: p.tracks || [],
+          createdAt: new Date(p.created_at),
+          updatedAt: new Date(p.updated_at),
+        })));
+      }
+    } catch (error) {
+      console.error('Failed to fetch playlists:', error);
+    }
+  };
+
   useEffect(() => {
     // Random greeting on mount
     setGreeting(GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
-    // Load saved playlists
-    setSavedPlaylists(getPlaylists());
+    // Load saved playlists from Supabase
+    fetchPlaylists();
   }, []);
 
   const handleSubmit = async (data: {
@@ -36,119 +82,155 @@ export default function Home() {
     const trackCount = 3; // Fixed at 3-5 tracks
     const trackDuration = 60; // 60 seconds per track
 
-    // Create playlist structure
-    const newPlaylist: Playlist = {
-      id: generateId(),
-      name: data.prompt.slice(0, 50) + (data.prompt.length > 50 ? '...' : ''),
-      prompt: data.prompt,
-      genre: data.genre,
-      mood: data.mood,
-      tracks: Array.from({ length: trackCount }, (_, i) => ({
-        id: generateId(),
-        title: `Track ${i + 1}`,
-        prompt: data.prompt,
-        genre: data.genre,
-        mood: data.mood,
-        duration: trackDuration,
-        status: 'pending' as const,
-        createdAt: new Date(),
-      })),
-      status: 'generating',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    setCurrentPlaylist(newPlaylist);
     setIsGenerating(true);
 
-    // Generate tracks sequentially
-    for (let i = 0; i < newPlaylist.tracks.length; i++) {
-      // Update track status to generating
-      setCurrentPlaylist(prev => {
-        if (!prev) return prev;
-        const tracks = [...prev.tracks];
-        tracks[i] = { ...tracks[i], status: 'generating' };
-        return { ...prev, tracks };
+    try {
+      // Create playlist in Supabase first
+      const createRes = await fetch('/api/playlists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: data.prompt,
+          genre: data.genre,
+          mood: data.mood,
+          trackCount,
+          trackDuration,
+        }),
       });
 
-      try {
-        // Build the prompt for this specific track
-        let trackPrompt = data.prompt;
-        if (data.genre) trackPrompt = `${data.genre} genre. ${trackPrompt}`;
-        if (data.mood) trackPrompt = `${data.mood} mood. ${trackPrompt}`;
-        
-        // Add variation for different tracks
-        const variations = [
-          '',
-          ' With an intro buildup.',
-          ' With dynamic changes and energy shifts.',
-        ];
-        trackPrompt += variations[i % variations.length];
+      if (!createRes.ok) {
+        throw new Error('Failed to create playlist');
+      }
 
-        const response = await fetch('/api/generate-track', {
-          method: 'POST',
+      const { playlist: dbPlaylist } = await createRes.json();
+      const newPlaylist = dbToPlaylist(dbPlaylist);
+      setCurrentPlaylist(newPlaylist);
+
+      // Generate tracks sequentially
+      for (let i = 0; i < newPlaylist.tracks.length; i++) {
+        const track = newPlaylist.tracks[i];
+
+        // Update track status to generating (local state)
+        setCurrentPlaylist(prev => {
+          if (!prev) return prev;
+          const tracks = [...prev.tracks];
+          tracks[i] = { ...tracks[i], status: 'generating' };
+          return { ...prev, tracks };
+        });
+
+        // Update track status in database
+        await fetch(`/api/tracks/${track.id}`, {
+          method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            prompt: trackPrompt,
-            duration: trackDuration,
-            instrumental: true,
-          }),
+          body: JSON.stringify({ status: 'generating' }),
         });
 
-        const result = await response.json();
+        try {
+          // Build the prompt for this specific track
+          let trackPrompt = data.prompt;
+          if (data.genre) trackPrompt = `${data.genre} genre. ${trackPrompt}`;
+          if (data.mood) trackPrompt = `${data.mood} mood. ${trackPrompt}`;
+          
+          // Add variation for different tracks
+          const variations = [
+            '',
+            ' With an intro buildup.',
+            ' With dynamic changes and energy shifts.',
+          ];
+          trackPrompt += variations[i % variations.length];
 
-        if (!response.ok) {
-          throw new Error(result.error || 'Failed to generate track');
+          const response = await fetch('/api/generate-track', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              prompt: trackPrompt,
+              duration: trackDuration,
+              instrumental: true,
+            }),
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(result.error || 'Failed to generate track');
+          }
+
+          // Update track in database with audio URL
+          await fetch(`/api/tracks/${track.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              audio_url: result.audioUrl,
+              status: 'ready',
+            }),
+          });
+
+          // Update local state
+          setCurrentPlaylist(prev => {
+            if (!prev) return prev;
+            const tracks = [...prev.tracks];
+            tracks[i] = {
+              ...tracks[i],
+              audioUrl: result.audioUrl,
+              status: 'ready',
+            };
+            return { ...prev, tracks };
+          });
+        } catch (error) {
+          console.error(`Error generating track ${i + 1}:`, error);
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          
+          // Update track in database with error
+          await fetch(`/api/tracks/${track.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              status: 'error',
+              error: errorMsg,
+            }),
+          });
+
+          // Update local state with error
+          setCurrentPlaylist(prev => {
+            if (!prev) return prev;
+            const tracks = [...prev.tracks];
+            tracks[i] = {
+              ...tracks[i],
+              status: 'error',
+              error: errorMsg,
+            };
+            return { ...prev, tracks };
+          });
         }
+      }
 
-        // Update track with audio URL
-        setCurrentPlaylist(prev => {
-          if (!prev) return prev;
-          const tracks = [...prev.tracks];
-          tracks[i] = {
-            ...tracks[i],
-            audioUrl: result.audioUrl,
-            status: 'ready',
-          };
-          return { ...prev, tracks };
-        });
-      } catch (error) {
-        console.error(`Error generating track ${i + 1}:`, error);
+      // Finish generation - update playlist status
+      setCurrentPlaylist(prev => {
+        if (!prev) return prev;
+        const hasReady = prev.tracks.some(t => t.status === 'ready');
+        const allReady = prev.tracks.every(t => t.status === 'ready');
         
-        // Update track with error
-        setCurrentPlaylist(prev => {
-          if (!prev) return prev;
-          const tracks = [...prev.tracks];
-          tracks[i] = {
-            ...tracks[i],
-            status: 'error',
-            error: error instanceof Error ? error.message : 'Unknown error',
-          };
-          return { ...prev, tracks };
+        const finalStatus = allReady ? 'ready' : hasReady ? 'partial' : 'error';
+        
+        // Update playlist status in database
+        fetch(`/api/playlists/${prev.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: finalStatus }),
         });
-      }
-    }
 
-    // Finish generation
-    setCurrentPlaylist(prev => {
-      if (!prev) return prev;
-      const hasReady = prev.tracks.some(t => t.status === 'ready');
-      const allReady = prev.tracks.every(t => t.status === 'ready');
-      
-      const updatedPlaylist = {
-        ...prev,
-        status: allReady ? 'ready' as const : hasReady ? 'partial' as const : 'error' as const,
-        updatedAt: new Date(),
-      };
-      
-      // Save playlist if any tracks succeeded
-      if (hasReady) {
-        savePlaylist(updatedPlaylist);
-        setSavedPlaylists(getPlaylists());
-      }
-      
-      return updatedPlaylist;
-    });
+        return {
+          ...prev,
+          status: finalStatus as Playlist['status'],
+          updatedAt: new Date(),
+        };
+      });
+
+      // Refresh saved playlists
+      fetchPlaylists();
+    } catch (error) {
+      console.error('Error creating playlist:', error);
+    }
 
     setIsGenerating(false);
   };
