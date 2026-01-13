@@ -42,14 +42,26 @@ export async function generateMusic(options: MusicGenerationOptions): Promise<Bl
       musicLengthMs,
     });
     
-    // Collect audio chunks into a buffer
+    // Collect audio chunks into a buffer using ReadableStream API
+    const reader = audioStream.getReader();
     const chunks: Uint8Array[] = [];
-    for await (const chunk of audioStream) {
-      chunks.push(chunk);
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) chunks.push(value);
     }
     
-    // Combine chunks into a single Blob
-    return new Blob(chunks, { type: 'audio/mpeg' });
+    // Combine chunks into a single buffer then create Blob
+    const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    const combined = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const chunk of chunks) {
+      combined.set(chunk, offset);
+      offset += chunk.length;
+    }
+    
+    return new Blob([combined], { type: 'audio/mpeg' });
   } catch (error) {
     console.error('Error generating music:', error);
     throw error;

@@ -21,12 +21,16 @@ interface TrackResult {
 }
 
 /**
- * Convert an async iterable stream to a base64 data URL
+ * Convert a ReadableStream to a base64 data URL
  */
-async function streamToDataUrl(stream: AsyncIterable<Uint8Array>): Promise<string> {
+async function streamToDataUrl(stream: ReadableStream<Uint8Array>): Promise<string> {
+  const reader = stream.getReader();
   const chunks: Uint8Array[] = [];
-  for await (const chunk of stream) {
-    chunks.push(chunk);
+  
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) chunks.push(value);
   }
   
   // Calculate total length

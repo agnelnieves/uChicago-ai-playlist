@@ -47,10 +47,14 @@ export async function POST(request: NextRequest) {
       musicLengthMs,
     });
     
-    // Collect audio chunks into a buffer
+    // Collect audio chunks into a buffer using ReadableStream API
+    const reader = audioStream.getReader();
     const chunks: Uint8Array[] = [];
-    for await (const chunk of audioStream) {
-      chunks.push(chunk);
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) chunks.push(value);
     }
     
     // Combine chunks into a single buffer
