@@ -530,6 +530,96 @@ export async function deleteTrack(id: string): Promise<void> {
 }
 
 // ============================================
+// DISCOVER FUNCTIONS
+// ============================================
+
+/**
+ * Get recent tracks from all users (for discover feed)
+ * Only returns tracks that are ready and have audio
+ */
+export async function getRecentTracks(limit: number = 20): Promise<DbTrack[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('tracks')
+    .select('*')
+    .eq('status', 'ready')
+    .not('audio_url', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('Error fetching recent tracks:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+/**
+ * Get recent playlists from all users (for discover feed)
+ * Only returns playlists that are ready or partial (have some tracks)
+ */
+export async function getRecentPlaylists(limit: number = 20): Promise<DbPlaylistWithTracks[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('playlists')
+    .select(`
+      *,
+      tracks (*)
+    `)
+    .in('status', ['ready', 'partial'])
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('Error fetching recent playlists:', error);
+    throw error;
+  }
+
+  // Filter out playlists with no ready tracks and sort tracks by order
+  return (data || [])
+    .map(playlist => ({
+      ...playlist,
+      tracks: (playlist.tracks || []).sort((a: DbTrack, b: DbTrack) => a.track_order - b.track_order),
+    }))
+    .filter(playlist => playlist.tracks.some((t: DbTrack) => t.status === 'ready' && t.audio_url));
+}
+
+/**
+ * Get featured/popular playlists (could be extended with popularity metrics)
+ * For now, just returns recent playlists with multiple tracks
+ */
+export async function getFeaturedPlaylists(limit: number = 12): Promise<DbPlaylistWithTracks[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('playlists')
+    .select(`
+      *,
+      tracks (*)
+    `)
+    .in('status', ['ready', 'partial'])
+    .order('created_at', { ascending: false })
+    .limit(limit * 2); // Fetch more to filter
+
+  if (error) {
+    console.error('Error fetching featured playlists:', error);
+    throw error;
+  }
+
+  // Filter to playlists with at least 2 ready tracks and sort tracks
+  return (data || [])
+    .map(playlist => ({
+      ...playlist,
+      tracks: (playlist.tracks || []).sort((a: DbTrack, b: DbTrack) => a.track_order - b.track_order),
+    }))
+    .filter(playlist => {
+      const readyTracks = playlist.tracks.filter((t: DbTrack) => t.status === 'ready' && t.audio_url);
+      return readyTracks.length >= 1;
+    })
+    .slice(0, limit);
+}
+
+// ============================================
 // HELPER FUNCTIONS
 // ============================================
 

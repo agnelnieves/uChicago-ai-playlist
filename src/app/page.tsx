@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Logo } from '@/components/Logo';
 import { PlaylistForm } from '@/components/PlaylistForm';
 import { GeneratingOverlay } from '@/components/GeneratingOverlay';
@@ -379,10 +380,25 @@ export default function Home() {
         <nav className="flex items-center justify-between py-4 sm:py-5">
           <Logo />
           
-          {/* Avatar */}
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-[var(--base-border)] bg-gradient-to-br from-orange-400 to-red-500 overflow-hidden flex-shrink-0">
-            <div className="w-full h-full flex items-center justify-center text-white font-bold text-sm sm:text-base">
-              A
+          <div className="flex items-center gap-4 sm:gap-6">
+            <Link 
+              href="/discover" 
+              className="text-[var(--text-dark-secondary)] hover:text-white transition-colors text-sm sm:text-base"
+            >
+              Discover
+            </Link>
+            <Link 
+              href="/" 
+              className="text-white font-medium text-sm sm:text-base"
+            >
+              Create
+            </Link>
+            
+            {/* Avatar */}
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-[var(--base-border)] bg-gradient-to-br from-orange-400 to-red-500 overflow-hidden flex-shrink-0">
+              <div className="w-full h-full flex items-center justify-center text-white font-bold text-sm sm:text-base">
+                A
+              </div>
             </div>
           </div>
         </nav>
