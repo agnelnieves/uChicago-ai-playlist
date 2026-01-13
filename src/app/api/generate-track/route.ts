@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
+import { createClient } from '@supabase/supabase-js';
 
 export const maxDuration = 300; // 5 minutes max for music generation
+
+// Create a Supabase client for storage operations
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 interface GenerateTrackBody {
   prompt: string;
@@ -66,12 +73,38 @@ export async function POST(request: NextRequest) {
       offset += chunk.length;
     }
     
-    // Convert to base64 data URL
-    const base64Audio = Buffer.from(audioBuffer).toString('base64');
-    const audioUrl = `data:audio/mpeg;base64,${base64Audio}`;
+    // Upload to Supabase Storage
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
+    const filePath = `tracks/${timestamp}-${randomSuffix}.mp3`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('audio')
+      .upload(filePath, audioBuffer, {
+        contentType: 'audio/mpeg',
+        cacheControl: '3600',
+        upsert: false,
+      });
+    
+    if (uploadError) {
+      console.error('Failed to upload audio to storage:', uploadError);
+      // Fallback to base64 if storage upload fails
+      const base64Audio = Buffer.from(audioBuffer).toString('base64');
+      return NextResponse.json({
+        audioUrl: `data:audio/mpeg;base64,${base64Audio}`,
+        duration,
+        prompt: fullPrompt,
+        storageError: uploadError.message,
+      });
+    }
+    
+    // Get public URL
+    const { data: publicUrlData } = supabase.storage
+      .from('audio')
+      .getPublicUrl(filePath);
     
     return NextResponse.json({
-      audioUrl,
+      audioUrl: publicUrlData.publicUrl,
       duration,
       prompt: fullPrompt,
     });

@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Logo } from '@/components/Logo';
 import { PlaylistForm } from '@/components/PlaylistForm';
-import { PlaylistPlayer } from '@/components/PlaylistPlayer';
 import { GeneratingOverlay } from '@/components/GeneratingOverlay';
 import { Playlist } from '@/types';
 import type { DbPlaylistWithTracks, DbTrack } from '@/lib/supabase/types';
@@ -39,17 +39,20 @@ function dbToPlaylist(db: DbPlaylistWithTracks): Playlist {
     prompt: db.prompt,
     genre: db.genre || undefined,
     mood: db.mood || undefined,
+    coverImageUrl: db.cover_image_url || undefined,
     status: db.status,
     createdAt: new Date(db.created_at),
     updatedAt: new Date(db.updated_at),
     tracks: db.tracks.map((t: DbTrack) => ({
       id: t.id,
       title: t.title,
+      artist: t.artist || undefined,
       prompt: t.prompt,
       genre: t.genre || undefined,
       mood: t.mood || undefined,
       duration: t.duration,
       audioUrl: t.audio_url || undefined,
+      imageUrl: t.image_url || undefined,
       status: t.status,
       error: t.error || undefined,
       createdAt: new Date(t.created_at),
@@ -58,11 +61,10 @@ function dbToPlaylist(db: DbPlaylistWithTracks): Playlist {
 }
 
 export default function Home() {
+  const router = useRouter();
   const [greeting, setGreeting] = useState(GREETINGS[0]);
   const [currentPlaylist, setCurrentPlaylist] = useState<Playlist | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [savedPlaylists, setSavedPlaylists] = useState<Playlist[]>([]);
-  const [sessionInitialized, setSessionInitialized] = useState(false);
 
   // Initialize session - creates or validates session cookie
   const initializeSession = useCallback(async () => {
@@ -84,31 +86,10 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Failed to initialize session:', error);
-    } finally {
-      setSessionInitialized(true);
     }
   }, []);
 
-  // Load saved playlists from Supabase (filtered by session)
-  const fetchPlaylists = useCallback(async () => {
-    try {
-      const res = await fetch('/api/playlists');
-      if (res.ok) {
-        const data = await res.json();
-        // Note: These don't include tracks, just playlist metadata
-        setSavedPlaylists(data.playlists.map((p: DbPlaylistWithTracks) => ({
-          ...p,
-          tracks: p.tracks || [],
-          createdAt: new Date(p.created_at),
-          updatedAt: new Date(p.updated_at),
-        })));
-      }
-    } catch (error) {
-      console.error('Failed to fetch playlists:', error);
-    }
-  }, []);
-
-  // Initialize session on mount, then fetch playlists
+  // Initialize session on mount
   useEffect(() => {
     // Random greeting on mount
     setGreeting(GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
@@ -117,12 +98,66 @@ export default function Home() {
     initializeSession();
   }, [initializeSession]);
 
-  // Fetch playlists once session is initialized
-  useEffect(() => {
-    if (sessionInitialized) {
-      fetchPlaylists();
+  // Helper function to make API requests with retry
+  const fetchWithRetry = async (
+    url: string,
+    options: RequestInit,
+    maxRetries: number = 3
+  ): Promise<Response> => {
+    let lastError: Error | null = null;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await fetch(url, options);
+        
+        // Retry on 5xx errors
+        if (response.status >= 500 && attempt < maxRetries - 1) {
+          const delay = 1000 * Math.pow(2, attempt) + Math.random() * 500;
+          console.log(`Request to ${url} returned ${response.status}, retrying in ${Math.round(delay)}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        
+        return response;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        
+        if (attempt < maxRetries - 1) {
+          const delay = 1000 * Math.pow(2, attempt) + Math.random() * 500;
+          console.log(`Request to ${url} failed, retrying in ${Math.round(delay)}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
     }
-  }, [sessionInitialized, fetchPlaylists]);
+    
+    throw lastError || new Error('Request failed after retries');
+  };
+
+  // Helper function to generate an image
+  const generateImage = async (
+    prompt: string,
+    type: 'playlist_cover' | 'track_thumbnail',
+    genre?: string,
+    mood?: string
+  ): Promise<string | null> => {
+    try {
+      const response = await fetchWithRetry('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, type, genre, mood }),
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        return result.imageUrl || null;
+      }
+      console.error('Failed to generate image');
+      return null;
+    } catch (error) {
+      console.error('Error generating image:', error);
+      return null;
+    }
+  };
 
   const handleSubmit = async (data: {
     prompt: string;
@@ -157,6 +192,21 @@ export default function Home() {
       const newPlaylist = dbToPlaylist(dbPlaylist);
       setCurrentPlaylist(newPlaylist);
 
+      // Generate playlist cover image (async, don't wait)
+      generateImage(data.prompt, 'playlist_cover', data.genre, data.mood)
+        .then(async (coverImageUrl) => {
+          if (coverImageUrl && newPlaylist.id) {
+            // Update playlist cover in database (with retry)
+            await fetchWithRetry(`/api/playlists/${newPlaylist.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ cover_image_url: coverImageUrl }),
+            }).catch(err => console.warn('Failed to save playlist cover:', err));
+            // Update local state
+            setCurrentPlaylist(prev => prev ? { ...prev, coverImageUrl } : prev);
+          }
+        });
+
       // Generate tracks sequentially
       for (let i = 0; i < newPlaylist.tracks.length; i++) {
         const track = newPlaylist.tracks[i];
@@ -169,12 +219,12 @@ export default function Home() {
           return { ...prev, tracks };
         });
 
-        // Update track status in database
-        await fetch(`/api/tracks/${track.id}`, {
+        // Update track status in database (with retry)
+        await fetchWithRetry(`/api/tracks/${track.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: 'generating' }),
-        });
+        }).catch(err => console.warn('Failed to update track status to generating:', err));
 
         try {
           // Build the prompt for this specific track
@@ -192,31 +242,40 @@ export default function Home() {
             trackPrompt += variations[i % variations.length];
           }
 
-          const response = await fetch('/api/generate-track', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              prompt: trackPrompt,
-              duration: trackDuration,
-              instrumental: true,
-            }),
-          });
+          // Generate track audio and image in parallel (with retry for audio)
+          const [audioResponse, trackImageUrl] = await Promise.all([
+            fetchWithRetry('/api/generate-track', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                prompt: trackPrompt,
+                duration: trackDuration,
+                instrumental: true,
+              }),
+            }, 2), // Fewer retries for track generation since it's expensive
+            generateImage(trackPrompt, 'track_thumbnail', data.genre, data.mood),
+          ]);
 
-          const result = await response.json();
+          const audioResult = await audioResponse.json();
 
-          if (!response.ok) {
-            throw new Error(result.error || 'Failed to generate track');
+          if (!audioResponse.ok) {
+            throw new Error(audioResult.error || 'Failed to generate track');
           }
 
-          // Update track in database with audio URL
-          await fetch(`/api/tracks/${track.id}`, {
+          // Update track in database with audio URL and image URL (with retry)
+          const updateResponse = await fetchWithRetry(`/api/tracks/${track.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              audio_url: result.audioUrl,
+              audio_url: audioResult.audioUrl,
+              image_url: trackImageUrl,
               status: 'ready',
             }),
           });
+          
+          if (!updateResponse.ok) {
+            console.warn(`Failed to save track ${track.id} to database (status: ${updateResponse.status})`);
+          }
 
           // Update local state
           setCurrentPlaylist(prev => {
@@ -224,7 +283,8 @@ export default function Home() {
             const tracks = [...prev.tracks];
             tracks[i] = {
               ...tracks[i],
-              audioUrl: result.audioUrl,
+              audioUrl: audioResult.audioUrl,
+              imageUrl: trackImageUrl || undefined,
               status: 'ready',
             };
             return { ...prev, tracks };
@@ -233,15 +293,15 @@ export default function Home() {
           console.error(`Error generating track ${i + 1}:`, error);
           const errorMsg = error instanceof Error ? error.message : 'Unknown error';
           
-          // Update track in database with error
-          await fetch(`/api/tracks/${track.id}`, {
+          // Update track in database with error (with retry)
+          await fetchWithRetry(`/api/tracks/${track.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               status: 'error',
               error: errorMsg,
             }),
-          });
+          }).catch(err => console.warn('Failed to update track error status:', err));
 
           // Update local state with error
           setCurrentPlaylist(prev => {
@@ -257,38 +317,51 @@ export default function Home() {
         }
       }
 
-      // Finish generation - update playlist status
-      setCurrentPlaylist(prev => {
-        if (!prev) return prev;
-        const hasReady = prev.tracks.some(t => t.status === 'ready');
-        const allReady = prev.tracks.every(t => t.status === 'ready');
-        
+      // Finish generation - update playlist status and navigate
+      // We need to get the current state to determine final status
+      const currentState = await new Promise<Playlist | null>((resolve) => {
+        setCurrentPlaylist(prev => {
+          resolve(prev);
+          return prev;
+        });
+      });
+
+      if (currentState) {
+        const hasReady = currentState.tracks.some(t => t.status === 'ready');
+        const allReady = currentState.tracks.every(t => t.status === 'ready');
         const finalStatus = allReady ? 'ready' : hasReady ? 'partial' : 'error';
-        
-        // Update playlist status in database
-        fetch(`/api/playlists/${prev.id}`, {
+
+        // Update playlist status in database and wait for it (with retry)
+        await fetchWithRetry(`/api/playlists/${currentState.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: finalStatus }),
-        });
+        }).catch(err => console.warn('Failed to update playlist status:', err));
 
-        return {
+        // Update local state
+        setCurrentPlaylist(prev => prev ? {
           ...prev,
           status: finalStatus as Playlist['status'],
           updatedAt: new Date(),
-        };
-      });
+        } : prev);
 
-      // Refresh saved playlists
-      fetchPlaylists();
+        // Small delay to ensure database writes are committed
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Navigate to the appropriate page based on mode
+        if (data.mode === 'single' && currentState.tracks.length === 1) {
+          // For single tracks, navigate to track page
+          router.push(`/t/${currentState.tracks[0].id}`);
+        } else {
+          // For playlists, navigate to playlist page
+          router.push(`/p/${newPlaylist.id}`);
+        }
+      }
     } catch (error) {
       console.error('Error creating playlist:', error);
+      setIsGenerating(false);
     }
-
-    setIsGenerating(false);
   };
-
-  const hasReadyTracks = currentPlaylist?.tracks.some(t => t.status === 'ready');
 
   return (
     <div className="min-h-screen bg-[var(--base-surface-1)] flex flex-col relative overflow-hidden">
@@ -320,7 +393,7 @@ export default function Home() {
         {/* Greeting */}
         <div className="text-center pb-6 sm:pb-8 md:pb-[42px]">
           <h1 className="text-2xl sm:text-[28px] md:text-[30px] leading-tight sm:leading-[36px] md:leading-[38px] tracking-[-0.5px] sm:tracking-[-0.6px] text-[var(--text-dark-secondary)] max-w-[640px] px-2">
-            {greeting.split('!').map((part, i, arr) => (
+            {greeting.split('!').map((part, i) => (
               <span key={i}>
                 {i === 0 ? <span className="block">{part}!</span> : null}
                 {i === 1 && part ? <span className="block">{part}</span> : null}
@@ -336,11 +409,6 @@ export default function Home() {
       {/* Generating Overlay */}
       {isGenerating && currentPlaylist && (
         <GeneratingOverlay playlist={currentPlaylist} />
-      )}
-
-      {/* Player */}
-      {!isGenerating && currentPlaylist && hasReadyTracks && (
-        <PlaylistPlayer playlist={currentPlaylist} />
       )}
     </div>
   );
