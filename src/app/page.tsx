@@ -128,8 +128,9 @@ export default function Home() {
     prompt: string;
     genre?: string;
     mood?: string;
+    mode: 'single' | 'playlist';
   }) => {
-    const trackCount = 3; // Fixed at 3-5 tracks
+    const trackCount = data.mode === 'single' ? 1 : 3;
     const trackDuration = 60; // 60 seconds per track
 
     setIsGenerating(true);
@@ -181,13 +182,15 @@ export default function Home() {
           if (data.genre) trackPrompt = `${data.genre} genre. ${trackPrompt}`;
           if (data.mood) trackPrompt = `${data.mood} mood. ${trackPrompt}`;
           
-          // Add variation for different tracks
-          const variations = [
-            '',
-            ' With an intro buildup.',
-            ' With dynamic changes and energy shifts.',
-          ];
-          trackPrompt += variations[i % variations.length];
+          // Add variation for different tracks (only for playlists)
+          if (data.mode === 'playlist') {
+            const variations = [
+              '',
+              ' With an intro buildup.',
+              ' With dynamic changes and energy shifts.',
+            ];
+            trackPrompt += variations[i % variations.length];
+          }
 
           const response = await fetch('/api/generate-track', {
             method: 'POST',

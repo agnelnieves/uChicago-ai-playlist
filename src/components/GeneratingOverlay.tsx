@@ -11,6 +11,7 @@ export function GeneratingOverlay({ playlist }: GeneratingOverlayProps) {
   const totalTracks = playlist.tracks.length;
   const completedTracks = playlist.tracks.filter(t => t.status === 'ready').length;
   const currentTrack = playlist.tracks.find(t => t.status === 'generating');
+  const isSingleTrack = totalTracks === 1;
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -22,37 +23,51 @@ export function GeneratingOverlay({ playlist }: GeneratingOverlayProps) {
           </div>
           <div className="min-w-0">
             <h3 className="text-base sm:text-lg font-semibold text-white">
-              Creating your playlist
+              {isSingleTrack ? 'Creating your track' : 'Creating your playlist'}
             </h3>
             <p className="text-xs sm:text-sm text-[var(--text-dark-secondary)]">
-              This may take a few minutes
+              {isSingleTrack ? 'This may take a minute' : 'This may take a few minutes'}
             </p>
           </div>
         </div>
 
-        {/* Progress */}
-        <div className="mb-4 sm:mb-6">
-          <div className="flex justify-between text-xs sm:text-sm mb-2">
-            <span className="text-[var(--text-dark-secondary)]">Progress</span>
-            <span className="text-white">{completedTracks}/{totalTracks} tracks</span>
+        {/* Progress - only show for playlists */}
+        {!isSingleTrack && (
+          <div className="mb-4 sm:mb-6">
+            <div className="flex justify-between text-xs sm:text-sm mb-2">
+              <span className="text-[var(--text-dark-secondary)]">Progress</span>
+              <span className="text-white">{completedTracks}/{totalTracks} tracks</span>
+            </div>
+            <div className="h-1.5 sm:h-2 bg-[var(--base-fill-1)] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[var(--accent-blue)] rounded-full transition-all duration-500"
+                style={{ width: `${(completedTracks / totalTracks) * 100}%` }}
+              />
+            </div>
           </div>
-          <div className="h-1.5 sm:h-2 bg-[var(--base-fill-1)] rounded-full overflow-hidden">
-            <div
-              className="h-full bg-[var(--accent-blue)] rounded-full transition-all duration-500"
-              style={{ width: `${(completedTracks / totalTracks) * 100}%` }}
-            />
+        )}
+
+        {/* Track List - for playlists */}
+        {!isSingleTrack && (
+          <div className="space-y-1.5 sm:space-y-2">
+            {playlist.tracks.map((track, index) => (
+              <TrackStatus key={track.id} track={track} index={index} />
+            ))}
           </div>
-        </div>
+        )}
 
-        {/* Track List */}
-        <div className="space-y-1.5 sm:space-y-2">
-          {playlist.tracks.map((track, index) => (
-            <TrackStatus key={track.id} track={track} index={index} />
-          ))}
-        </div>
+        {/* Single track generating indicator */}
+        {isSingleTrack && currentTrack && (
+          <div className="flex items-center justify-center gap-3 py-6">
+            <LoadingSpinner className="w-6 h-6 text-[var(--accent-blue)]" />
+            <span className="text-sm text-[var(--text-dark-secondary)]">
+              Generating your track...
+            </span>
+          </div>
+        )}
 
-        {/* Current track info */}
-        {currentTrack && (
+        {/* Current track info - for playlists */}
+        {!isSingleTrack && currentTrack && (
           <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-[var(--base-border)]">
             <p className="text-xs sm:text-sm text-[var(--text-dark-tertiary)] truncate">
               Currently generating: {currentTrack.title}

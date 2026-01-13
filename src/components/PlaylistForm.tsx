@@ -5,11 +5,14 @@ import { Dropdown } from './Dropdown';
 import { DiceIcon, LoadingSpinner } from './Icons';
 import { GENRES, MOODS, SUGGESTION_PROMPTS, Genre, Mood } from '@/types';
 
+type GenerationMode = 'single' | 'playlist';
+
 interface PlaylistFormProps {
   onSubmit: (data: {
     prompt: string;
     genre?: string;
     mood?: string;
+    mode: GenerationMode;
   }) => void;
   isLoading?: boolean;
 }
@@ -18,6 +21,7 @@ export function PlaylistForm({ onSubmit, isLoading = false }: PlaylistFormProps)
   const [prompt, setPrompt] = useState('');
   const [genre, setGenre] = useState<Genre | undefined>();
   const [mood, setMood] = useState<Mood | undefined>();
+  const [mode, setMode] = useState<GenerationMode>('single');
   
   // Scroll gradient state
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -47,7 +51,7 @@ export function PlaylistForm({ onSubmit, isLoading = false }: PlaylistFormProps)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim() || isLoading) return;
-    onSubmit({ prompt: prompt.trim(), genre, mood });
+    onSubmit({ prompt: prompt.trim(), genre, mood, mode });
   };
 
   const handleRandomPrompt = () => {
@@ -64,6 +68,48 @@ export function PlaylistForm({ onSubmit, isLoading = false }: PlaylistFormProps)
 
   return (
     <div className="w-full max-w-[614px] mx-auto">
+      {/* Mode Toggle - Outside the form */}
+      <div className="flex justify-center mb-4 sm:mb-5">
+        <div className="inline-flex items-center h-10 sm:h-11 p-1 rounded-full bg-[var(--base-fill-1)] border border-[var(--base-border)]">
+          <button
+            type="button"
+            onClick={() => setMode('single')}
+            disabled={isLoading}
+            className={`flex items-center gap-2 h-8 sm:h-9 px-4 sm:px-5 rounded-full text-sm font-medium transition-all ${
+              mode === 'single'
+                ? 'bg-[var(--accent-blue)] text-white shadow-lg'
+                : 'text-[#9b9b9b] hover:text-white'
+            }`}
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <polygon points="10,8 16,12 10,16" fill="currentColor" stroke="none" />
+            </svg>
+            <span>Track</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('playlist')}
+            disabled={isLoading}
+            className={`flex items-center gap-2 h-8 sm:h-9 px-4 sm:px-5 rounded-full text-sm font-medium transition-all ${
+              mode === 'playlist'
+                ? 'bg-[var(--accent-blue)] text-white shadow-lg'
+                : 'text-[#9b9b9b] hover:text-white'
+            }`}
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="8" y1="6" x2="21" y2="6" />
+              <line x1="8" y1="12" x2="21" y2="12" />
+              <line x1="8" y1="18" x2="21" y2="18" />
+              <line x1="3" y1="6" x2="3.01" y2="6" strokeWidth="3" strokeLinecap="round" />
+              <line x1="3" y1="12" x2="3.01" y2="12" strokeWidth="3" strokeLinecap="round" />
+              <line x1="3" y1="18" x2="3.01" y2="18" strokeWidth="3" strokeLinecap="round" />
+            </svg>
+            <span>Playlist</span>
+          </button>
+        </div>
+      </div>
+
       <form onSubmit={handleSubmit}>
         {/* Prompt Box */}
         <div className="bg-[var(--base-fill-1)] border border-[var(--base-border)] rounded-[20px] sm:rounded-[25px] p-3 sm:p-3.5">
@@ -79,9 +125,9 @@ export function PlaylistForm({ onSubmit, isLoading = false }: PlaylistFormProps)
           </div>
 
           {/* Actions Bar */}
-          <div className="flex items-center justify-between gap-2 sm:gap-4 flex-wrap">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
             {/* Left Actions */}
-            <div className="flex items-center gap-1 flex-shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <Dropdown
                 label="Genre"
                 options={genreOptions}
@@ -99,8 +145,7 @@ export function PlaylistForm({ onSubmit, isLoading = false }: PlaylistFormProps)
             </div>
 
             {/* Right Actions */}
-            <div className="flex items-center gap-1 sm:gap-1.5">
-              {/* Random Prompt Button */}
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={handleRandomPrompt}
@@ -111,11 +156,10 @@ export function PlaylistForm({ onSubmit, isLoading = false }: PlaylistFormProps)
                 <DiceIcon className="w-5 h-5" />
               </button>
 
-              {/* Create Button */}
               <button
                 type="submit"
                 disabled={!prompt.trim() || isLoading}
-                className="flex items-center justify-center h-9 px-3 sm:px-4 rounded-full font-semibold text-sm text-[var(--text-light-primary)] disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:brightness-110"
+                className="flex items-center justify-center h-9 px-4 sm:px-5 rounded-full font-semibold text-sm text-[var(--text-light-primary)] disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:brightness-110"
                 style={{
                   backgroundImage: `linear-gradient(180deg, rgba(20, 20, 20, 0) 0%, rgba(20, 20, 20, 0.36) 100%), linear-gradient(90deg, #50A1FF 0%, #50A1FF 100%)`,
                   border: '1px solid rgba(255, 255, 255, 0.12)',
@@ -124,8 +168,8 @@ export function PlaylistForm({ onSubmit, isLoading = false }: PlaylistFormProps)
                 {isLoading ? (
                   <>
                     <LoadingSpinner className="w-4 h-4 mr-1.5 sm:mr-2" />
-                    <span className="hidden xs:inline">Creating...</span>
-                    <span className="xs:hidden">...</span>
+                    <span className="hidden sm:inline">Creating...</span>
+                    <span className="sm:hidden">...</span>
                   </>
                 ) : (
                   'Create'

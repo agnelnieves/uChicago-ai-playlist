@@ -54,11 +54,14 @@ export async function POST(request: NextRequest) {
 
     // Get user_id from session (if available)
     const userId = await getUserIdFromRequest(request);
+    
+    const isSingleTrack = trackCount === 1;
+    const truncatedPrompt = prompt.slice(0, 50) + (prompt.length > 50 ? '...' : '');
 
     // Create playlist data with user_id
     const playlistData: InsertPlaylist = {
       user_id: userId,
-      name: prompt.slice(0, 50) + (prompt.length > 50 ? '...' : ''),
+      name: truncatedPrompt,
       prompt,
       genre: genre || null,
       mood: mood || null,
@@ -69,7 +72,7 @@ export async function POST(request: NextRequest) {
     const tracksData: Omit<InsertTrack, 'playlist_id'>[] = Array.from(
       { length: trackCount },
       (_, i) => ({
-        title: `Track ${i + 1}`,
+        title: isSingleTrack ? truncatedPrompt : `Track ${i + 1}`,
         prompt,
         genre: genre || null,
         mood: mood || null,
