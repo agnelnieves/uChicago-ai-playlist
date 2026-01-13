@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Logo } from '@/components/Logo';
 import { PlaylistForm } from '@/components/PlaylistForm';
 import { GeneratingOverlay } from '@/components/GeneratingOverlay';
+import { DiscoverFeed } from '@/components/DiscoverFeed';
 import { Playlist } from '@/types';
 import type { DbPlaylistWithTracks, DbTrack } from '@/lib/supabase/types';
 
@@ -389,9 +390,9 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <main className="relative z-10 flex-1 flex flex-col items-center pt-8 sm:pt-12 md:pt-[50px] px-4 sm:px-6 md:px-8 lg:px-[216px]">
+      <main className="relative z-10 flex-1 flex flex-col items-center pt-8 sm:pt-12 md:pt-[50px]">
         {/* Greeting */}
-        <div className="text-center pb-6 sm:pb-8 md:pb-[42px]">
+        <div className="text-center pb-6 sm:pb-8 md:pb-[42px] px-4 sm:px-6 md:px-8 lg:px-[216px]">
           <h1 className="text-2xl sm:text-[28px] md:text-[30px] leading-tight sm:leading-[36px] md:leading-[38px] tracking-[-0.5px] sm:tracking-[-0.6px] text-[var(--text-dark-secondary)] max-w-[640px] px-2">
             {greeting.split('!').map((part, i) => (
               <span key={i}>
@@ -403,7 +404,12 @@ export default function Home() {
         </div>
 
         {/* Form */}
-        <PlaylistForm onSubmit={handleSubmit} isLoading={isGenerating} />
+        <div className="px-4 sm:px-6 md:px-8 lg:px-[216px] w-full flex justify-center">
+          <PlaylistForm onSubmit={handleSubmit} isLoading={isGenerating} />
+        </div>
+
+        {/* Discover Feed */}
+        <DiscoverFeed />
       </main>
 
       {/* Generating Overlay */}
