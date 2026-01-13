@@ -171,3 +171,45 @@ export function VolumeIcon({ className = 'w-5 h-5' }: { className?: string }) {
   );
 }
 
+export function CloseIcon({ className = 'w-5 h-5' }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M5 5L15 15M15 5L5 15"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function PlayCircleIcon({ className = 'w-5 h-5' }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M9.5 8.5v7l6-3.5-6-3.5z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+

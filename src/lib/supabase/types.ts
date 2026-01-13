@@ -60,6 +60,7 @@ export interface DbPlaylist {
   prompt: string;
   genre: string | null;
   mood: string | null;
+  cover_image_url: string | null;
   status: PlaylistStatus;
   created_at: string;
   updated_at: string;
@@ -69,11 +70,13 @@ export interface DbTrack {
   id: string;
   playlist_id: string;
   title: string;
+  artist: string | null;
   prompt: string;
   genre: string | null;
   mood: string | null;
   duration: number;
   audio_url: string | null;
+  image_url: string | null;
   status: TrackStatus;
   error: string | null;
   track_order: number;
@@ -92,17 +95,20 @@ export interface InsertPlaylist {
   prompt: string;
   genre?: string | null;
   mood?: string | null;
+  cover_image_url?: string | null;
   status?: PlaylistStatus;
 }
 
 export interface InsertTrack {
   playlist_id: string;
   title: string;
+  artist?: string | null;
   prompt: string;
   genre?: string | null;
   mood?: string | null;
   duration?: number;
   audio_url?: string | null;
+  image_url?: string | null;
   status?: TrackStatus;
   error?: string | null;
   track_order?: number;
@@ -116,16 +122,19 @@ export interface UpdatePlaylist {
   prompt?: string;
   genre?: string | null;
   mood?: string | null;
+  cover_image_url?: string | null;
   status?: PlaylistStatus;
 }
 
 export interface UpdateTrack {
   title?: string;
+  artist?: string | null;
   prompt?: string;
   genre?: string | null;
   mood?: string | null;
   duration?: number;
   audio_url?: string | null;
+  image_url?: string | null;
   status?: TrackStatus;
   error?: string | null;
   track_order?: number;

@@ -101,7 +101,7 @@ export async function touchUser(id: string): Promise<void> {
  */
 export async function getOrCreateUserByIpHash(ipHash: string): Promise<DbUser> {
   // Try to find existing user
-  let user = await getUserByIpHash(ipHash);
+  const user = await getUserByIpHash(ipHash);
   
   if (user) {
     // Update last_seen_at

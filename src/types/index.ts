@@ -1,12 +1,14 @@
 export interface Track {
   id: string;
   title: string;
+  artist?: string;
   prompt: string;
   genre?: string;
   mood?: string;
   duration: number;
   audioUrl?: string;
   audioBlob?: Blob;
+  imageUrl?: string;
   status: 'pending' | 'generating' | 'ready' | 'error';
   error?: string;
   createdAt: Date;
@@ -19,6 +21,7 @@ export interface Playlist {
   prompt: string;
   genre?: string;
   mood?: string;
+  coverImageUrl?: string;
   tracks: Track[];
   status: 'pending' | 'generating' | 'ready' | 'partial' | 'error';
   createdAt: Date;
