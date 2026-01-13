@@ -13,6 +13,75 @@ import type {
   UpdateTrack,
 } from './types';
 
+// Helper to extract error message from various error formats
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === 'object' && error !== null) {
+    if ('message' in error && typeof (error as { message: unknown }).message === 'string') {
+      return (error as { message: string }).message;
+    }
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return String(error);
+    }
+  }
+  return String(error);
+}
+
+// Check if error is transient (network/Cloudflare issues)
+function isTransientError(errorMessage: string): boolean {
+  return (
+    errorMessage.includes('<!DOCTYPE') ||
+    errorMessage.includes('fetch failed') ||
+    errorMessage.includes('ECONNRESET') ||
+    errorMessage.includes('socket') ||
+    errorMessage.includes('UND_ERR') ||
+    errorMessage.includes('500') ||
+    errorMessage.includes('502') ||
+    errorMessage.includes('503') ||
+    errorMessage.includes('504') ||
+    errorMessage.includes('Internal server error') ||
+    errorMessage.includes('Connection') ||
+    errorMessage.includes('timeout') ||
+    errorMessage.includes('other side closed')
+  );
+}
+
+// Retry helper for database operations
+async function withRetry<T>(
+  operation: string,
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 1000
+): Promise<T> {
+  let lastError: unknown = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      const errorMessage = getErrorMessage(error);
+      const isTransient = isTransientError(errorMessage);
+      
+      if (!isTransient || attempt === maxRetries - 1) {
+        console.error(`${operation} failed after ${attempt + 1} attempts:`, 
+          errorMessage.substring(0, 300));
+        throw error;
+      }
+      
+      const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 500;
+      console.log(`${operation} retry ${attempt + 1}/${maxRetries} in ${Math.round(delay)}ms`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError;
+}
+
 // ============================================
 // USER OPERATIONS
 // ============================================
@@ -305,23 +374,24 @@ export async function createPlaylist(playlist: InsertPlaylist): Promise<DbPlayli
 }
 
 /**
- * Update a playlist
+ * Update a playlist (with retry for transient errors)
  */
 export async function updatePlaylist(id: string, updates: UpdatePlaylist): Promise<DbPlaylist> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('playlists')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
+  return withRetry('Update playlist', async () => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('playlists')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
 
-  if (error) {
-    console.error('Error updating playlist:', error);
-    throw error;
-  }
+    if (error) {
+      throw error;
+    }
 
-  return data;
+    return data;
+  });
 }
 
 /**
@@ -423,23 +493,24 @@ export async function createTracks(tracks: InsertTrack[]): Promise<DbTrack[]> {
 }
 
 /**
- * Update a track
+ * Update a track (with retry for transient errors)
  */
 export async function updateTrack(id: string, updates: UpdateTrack): Promise<DbTrack> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('tracks')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
+  return withRetry('Update track', async () => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('tracks')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
 
-  if (error) {
-    console.error('Error updating track:', error);
-    throw error;
-  }
+    if (error) {
+      throw error;
+    }
 
-  return data;
+    return data;
+  });
 }
 
 /**
